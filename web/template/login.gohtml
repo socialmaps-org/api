@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+</head>
+
+<body>
+    {{ if .User }}
+    <p>Welcome {{ .User.Username }}!</p>
+    <p>{{ .User }}</p>
+    {{ else }}
+    <a href="/auth/openstreetmap">Sign in with OpenStreetMap</a>
+    {{ end }}
+</body>
+
+</html>

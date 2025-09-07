@@ -1,0 +1,4 @@
+.vscode
+bin/
+db.sqlite3
+.envrc
