@@ -41,6 +41,9 @@ func main() {
 		panic("`SESSION_SECRET` is too short; must be at least 32 bytes when decoded")
 	}
 
+	indexTemplate := template.Must(template.ParseFiles("web/template/index.gohtml", "web/template/base.gohtml"))
+	loginTemplate := template.Must(template.ParseFiles("web/template/login.gohtml", "web/template/base.gohtml"))
+
 	oauth2Config := &oauth2.Config{
 		ClientID:     OSMClientID,
 		ClientSecret: OSMClientSecret,
@@ -49,12 +52,40 @@ func main() {
 		RedirectURL:  "http://127.0.0.1:8080/auth/callback",
 	}
 
-	loginTemplate := template.Must(template.New("login.gohtml").ParseFiles("web/template/login.gohtml"))
-
 	db := database.Open("db.sqlite3")
 	defer db.Close()
 
-	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		type indexTemplateData struct {
+			User *model.User
+		}
+
+		var usr *model.User
+		cookie, err := r.Cookie(session.COOKIE_NAME)
+		if err != nil && err != http.ErrNoCookie {
+			panic(err)
+		}
+
+		if cookie != nil {
+			sessionID := session.FromCookie(SESSION_SECRET, cookie)
+			session := model.LoadActiveSession(db, sessionID)
+			if session != nil {
+				usr = model.LoadUser(db, session.UserID)
+			}
+		}
+
+		err = indexTemplate.Execute(
+			w,
+			indexTemplateData{
+				User: usr,
+			},
+		)
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
+	http.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		type loginTemplateData struct {
 			User *model.User
 		}
@@ -84,7 +115,7 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /logout", func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, session.EmptyCookie())
 
 		cookie, err := r.Cookie(session.COOKIE_NAME)
@@ -107,13 +138,13 @@ func main() {
 		w.Write([]byte("logged out!"))
 	})
 
-	http.HandleFunc("/auth/openstreetmap", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /auth/openstreetmap", func(w http.ResponseWriter, r *http.Request) {
 		authCodeURL := oauth2Config.AuthCodeURL("foo", oauth2.ApprovalForce)
 		log.Println(authCodeURL)
 		http.Redirect(w, r, authCodeURL, http.StatusSeeOther)
 	})
 
-	http.HandleFunc("/auth/callback", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /auth/callback", func(w http.ResponseWriter, r *http.Request) {
 		code := r.FormValue("code")
 		tok, err := oauth2Config.Exchange(r.Context(), code)
 		if err != nil {
@@ -140,10 +171,7 @@ func main() {
 
 		http.SetCookie(w, sesCookie)
 
-		err = json.NewEncoder(w).Encode(user)
-		if err != nil {
-			panic(err)
-		}
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
 	log.Println("serving...")

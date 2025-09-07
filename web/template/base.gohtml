@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{block "title" .}}{{end}}</title>
+    <style>
+        body {
+            font-family: sans-serif;
+
+            max-width: 60ch;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        header {
+            border-bottom: 1px solid black;
+            padding-bottom: 8px;
+        }
+
+        #logo {
+            font-size: large;
+            font-weight: bold;
+        }
+    </style>
+    {{block "head" .}}{{end}}
+</head>
+
+<body>
+    <header>
+        <span id="logo">Social Maps</span>
+    </header>
+    {{block "body" .}}{{end}}
+    <footer></footer>
+</body>
+
+</html>

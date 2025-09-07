@@ -1,4 +1,4 @@
-{{define "title"}}Login &mdash; Social Maps{{end}}
+{{define "title"}}Social Maps{{end}}
 
 {{define "head"}}
 <style>
@@ -10,10 +10,10 @@
 
 {{define "body"}}
 {{ if .User }}
-<p>You're already logged in as <span id="username">{{.User.Username}}</span>.</p>
+<p>Welcome <span id="username">{{.User.Username}}</span>!</p>
 <p><a href="/logout">Log out</a></p>
 {{ else }}
-<a href="/auth/openstreetmap">Sign in with OpenStreetMap</a>
+<a href="/login">Sign in</a>
 {{ end }}
 {{end}}
 
