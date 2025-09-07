@@ -64,6 +64,7 @@ func ToCookie(key []byte, sessionID int64) *http.Cookie {
 		Value:    base64.URLEncoding.EncodeToString(tagmsg),
 		HttpOnly: true,
 		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	}
 }
@@ -104,6 +105,7 @@ func EmptyCookie() *http.Cookie {
 		Value:    "",
 		HttpOnly: true,
 		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 		MaxAge:   -1,
 	}
