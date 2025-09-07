@@ -63,8 +63,7 @@ func LoadActiveSession(db *sql.DB, id int64) *Session {
 		FROM
 			Sessions
 		WHERE
-			id = @id AND 
-			revoked_at > unixepoch()
+			id = @id
 		;
 		`,
 		sql.Named("id", id),
@@ -73,7 +72,15 @@ func LoadActiveSession(db *sql.DB, id int64) *Session {
 	if err != nil && err != sql.ErrNoRows {
 		panic(err)
 	}
+	if ses == nil {
+		return nil
+	}
+	if ses.RevokedAt != nil && ses.RevokedAt.Before(time.Now()) {
+		return nil
+	}
+
 	ses.DB = db
+
 	return ses
 }
 
@@ -110,9 +117,9 @@ func scanSession(row *sql.Row) (*Session, error) {
 		return nil, err
 	}
 
-	ses.CreatedAt = time.Unix(*createdAt, 0)
+	ses.CreatedAt = time.Unix(*createdAt, 0).UTC()
 	if revokedAt != nil {
-		t := time.Unix(*revokedAt, 0)
+		t := time.Unix(*revokedAt, 0).UTC()
 		ses.RevokedAt = &t
 	}
 

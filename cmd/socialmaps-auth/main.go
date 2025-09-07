@@ -85,6 +85,8 @@ func main() {
 	})
 
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, session.EmptyCookie())
+
 		cookie, err := r.Cookie(session.COOKIE_NAME)
 		if err != nil && err != http.ErrNoCookie {
 			panic(err)
@@ -101,8 +103,6 @@ func main() {
 		}
 
 		ses.Revoke()
-
-		http.SetCookie(w, session.EmptyCookie())
 
 		w.Write([]byte("logged out!"))
 	})
