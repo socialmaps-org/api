@@ -43,6 +43,7 @@ func main() {
 
 	indexTemplate := template.Must(template.ParseFiles("web/template/index.gohtml", "web/template/base.gohtml"))
 	loginTemplate := template.Must(template.ParseFiles("web/template/login.gohtml", "web/template/base.gohtml"))
+	logoutTemplate := template.Must(template.ParseFiles("web/template/logout.gohtml", "web/template/base.gohtml"))
 
 	oauth2Config := &oauth2.Config{
 		ClientID:     OSMClientID,
@@ -123,19 +124,18 @@ func main() {
 			panic(err)
 		}
 
-		if cookie == nil {
-			return
+		if cookie != nil {
+			sessionID := session.FromCookie(SESSION_SECRET, cookie)
+			ses := model.LoadActiveSession(db, sessionID)
+			if ses != nil {
+				ses.Revoke()
+			}
 		}
 
-		sessionID := session.FromCookie(SESSION_SECRET, cookie)
-		ses := model.LoadActiveSession(db, sessionID)
-		if ses == nil {
-			return
+		err = logoutTemplate.Execute(w, nil)
+		if err != nil {
+			panic(err)
 		}
-
-		ses.Revoke()
-
-		w.Write([]byte("logged out!"))
 	})
 
 	http.HandleFunc("GET /auth/openstreetmap", func(w http.ResponseWriter, r *http.Request) {
