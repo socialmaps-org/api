@@ -1,18 +1,29 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/endpoints"
+
+	"github.com/ory/fosite"
+	"github.com/ory/fosite/compose"
+	"github.com/ory/fosite/handler/openid"
+	"github.com/ory/fosite/storage"
+	"github.com/ory/fosite/token/jwt"
 
 	"codeberg.org/socialmaps/auth/internal/database"
 	"codeberg.org/socialmaps/auth/internal/model"
 	"codeberg.org/socialmaps/auth/internal/session"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/endpoints"
 )
 
 type userinfo struct {
@@ -52,6 +63,33 @@ func main() {
 		Endpoint:     endpoints.OpenStreetMap,
 		RedirectURL:  "http://127.0.0.1:8080/auth/callback",
 	}
+
+	store := storage.NewExampleStore()
+	secret := []byte("ndZC4kpqi6f*!3!v2TDYpfqbAyMATT")
+	hashedSecret, err := bcrypt.GenerateFromPassword(secret, bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+	store.Clients["my-client"] = &fosite.DefaultClient{
+		ID:           "my-client",
+		Secret:       hashedSecret,
+		RedirectURIs: []string{"http://127.0.0.1:8000/auth/callback"},
+		Scopes:       []string{"openid"},
+	}
+
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	var oauth2Server = compose.ComposeAllEnabled(
+		&fosite.Config{
+			IDTokenIssuer:              "org.socialmaps",
+			EnforcePKCE:                false,
+			AccessTokenLifespan:        time.Minute * 30,
+			GlobalSecret:               []byte("some-cool-secret-that-is-32bytes"),
+			SendDebugMessagesToClients: true,
+			// ...
+		},
+		store,
+		privateKey,
+	)
 
 	db := database.Open("db.sqlite3")
 	defer db.Close()
@@ -172,6 +210,73 @@ func main() {
 		http.SetCookie(w, sesCookie)
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
+	})
+
+	// OAuth2 Server
+	// =========================================================================
+	http.HandleFunc("/oauth2/authorize", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		// AuthorizeRequest will analyze the request and extract important
+		// information like scopes, response type and others.
+		ar, err := oauth2Server.NewAuthorizeRequest(ctx, r)
+		if err != nil {
+			panic(err)
+			oauth2Server.WriteAuthorizeError(ctx, w, ar, err)
+		}
+
+		ar.GrantScope("openid")
+
+		now := time.Now().UTC()
+		mySessionData := &openid.DefaultSession{
+			Claims: &jwt.IDTokenClaims{
+				Issuer:      "https://auth.socialmaps.org",
+				Subject:     "bora",
+				Audience:    []string{"http://127.0.0.1:8000"},
+				ExpiresAt:   now.Add(time.Hour * 6),
+				IssuedAt:    now,
+				RequestedAt: now,
+				AuthTime:    now,
+			},
+		}
+
+		response, err := oauth2Server.NewAuthorizeResponse(ctx, ar, mySessionData)
+		if err != nil {
+			panic(err)
+		}
+
+		oauth2Server.WriteAuthorizeResponse(ctx, w, ar, response)
+	})
+
+	http.HandleFunc("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
+		// This context will be passed to all methods.
+		ctx := r.Context()
+
+		now := time.Now().UTC()
+		mySessionData := &openid.DefaultSession{
+			Claims: &jwt.IDTokenClaims{
+				Issuer:      "https://auth.socialmaps.org",
+				Audience:    []string{"http://127.0.0.1:8000"},
+				ExpiresAt:   now.Add(time.Hour * 6),
+				IssuedAt:    now,
+				RequestedAt: now,
+				AuthTime:    now,
+			},
+		}
+
+		accessRequest, err := oauth2Server.NewAccessRequest(ctx, r, mySessionData)
+		if err != nil {
+			oauth2Server.WriteAccessError(ctx, w, accessRequest, err)
+		}
+
+		accessRequest.GrantScope("openid")
+
+		response, err := oauth2Server.NewAccessResponse(ctx, accessRequest)
+		if err != nil {
+			oauth2Server.WriteAccessError(ctx, w, accessRequest, err)
+		}
+
+		oauth2Server.WriteAccessResponse(ctx, w, accessRequest, response)
 	})
 
 	log.Println("serving...")
