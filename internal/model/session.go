@@ -8,13 +8,13 @@ import (
 type Session struct {
 	Model
 
-	ID        int64
-	UserID    int64
+	ID        string
+	UserID    string
 	CreatedAt time.Time
 	RevokedAt *time.Time
 }
 
-func CreateSession(db *sql.DB, userID int64) *Session {
+func CreateSession(db *sql.DB, userID string) *Session {
 	tx, err := db.Begin()
 	if err != nil {
 		panic(err)
@@ -52,7 +52,7 @@ func CreateSession(db *sql.DB, userID int64) *Session {
 	return ses
 }
 
-func LoadActiveSession(db *sql.DB, id int64) *Session {
+func LoadActiveSession(db *sql.DB, id string) *Session {
 	row := db.QueryRow(
 		`
 		SELECT

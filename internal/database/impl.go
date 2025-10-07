@@ -2,10 +2,14 @@ package database
 
 import (
 	"database/sql"
+	_ "embed"
 	"log"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+//go:embed "migrations/000 - initial schema.sql"
+var migration0 string
 
 func Open(dataSourceName string) *sql.DB {
 	db, err := sql.Open("sqlite3", dataSourceName)
@@ -32,25 +36,7 @@ func initialize(db *sql.DB) {
 	case 0:
 		log.Println("upgrading database schema 0 -> 1")
 
-		_, err = tx.Exec(`
-			CREATE TABLE Users (
-				  id              INTEGER PRIMARY KEY
-				, openid_provider TEXT NOT NULL
-				, openid_subject  TEXT NOT NULL
-				, username        TEXT NOT NULL
-				, CONSTRAINT unique_identity UNIQUE (openid_provider, openid_subject) 
-			) STRICT;
-			CREATE TABLE Sessions (
-				  id         INTEGER PRIMARY KEY
-				, user_id    INTEGER REFERENCES Users NOT NULL
-				, created_at INTEGER NOT NULL
-				, revoked_at INTEGER
-			) STRICT;
-		`)
-		if err != nil {
-			panic(err)
-		}
-		_, err = tx.Exec("PRAGMA user_version = 1;")
+		_, err = tx.Exec(migration0)
 		if err != nil {
 			panic(err)
 		}

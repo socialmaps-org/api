@@ -9,7 +9,7 @@ import (
 )
 
 type session struct {
-	ID int64 `json:"id"`
+	ID string `json:"id"`
 }
 
 type cookieValue struct {
@@ -39,7 +39,7 @@ type cookieValue struct {
 // https://developer.mozilla.org/docs/Web/HTTP/Guides/Cookies#cookie_prefixes
 const COOKIE_NAME = "__Host-Http-SocialMaps-Auth-Session"
 
-func ToCookie(key []byte, sessionID int64) *http.Cookie {
+func ToCookie(key []byte, sessionID string) *http.Cookie {
 	val := cookieValue{Session: session{ID: sessionID}}
 
 	msg, err := json.Marshal(val)
@@ -69,7 +69,7 @@ func ToCookie(key []byte, sessionID int64) *http.Cookie {
 	}
 }
 
-func FromCookie(key []byte, cookie *http.Cookie) int64 {
+func FromCookie(key []byte, cookie *http.Cookie) string {
 	tagmsg, err := base64.URLEncoding.DecodeString(cookie.Value)
 	if err != nil {
 		panic(err)

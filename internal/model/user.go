@@ -5,7 +5,7 @@ import (
 )
 
 type User struct {
-	ID          int64
+	ID          string
 	OIDProvider string
 	OIDSubject  string
 	Username    string
@@ -54,7 +54,7 @@ func CreateOrUpdateUser(db *sql.DB, oidProvider, oidSubject, username string) *U
 	return usr
 }
 
-func LoadUser(db *sql.DB, id int64) *User {
+func LoadUser(db *sql.DB, id string) *User {
 	row := db.QueryRow(
 		`
 		SELECT
