@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"database/sql"
+	"regexp"
 
 	"codeberg.org/socialmaps/auth/internal/database"
 )
@@ -34,6 +35,8 @@ const reviewColumns = `
 	, dec_n_likes
 	, dec_updated_at
 `
+
+var reviewIDRegex = regexp.MustCompile(`^rvw_[a-zA-Z0-9]+$`)
 
 func scanReview(scn database.Scanner) *Review {
 	var rvw Review
@@ -194,4 +197,8 @@ func LoadReview(ctx context.Context, db *sql.DB, id string) *Review {
 	rvw := scanReview(row)
 
 	return rvw
+}
+
+func IsValidReviewID(s string) bool {
+	return reviewIDRegex.MatchString(s)
 }

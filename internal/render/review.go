@@ -20,3 +20,15 @@ func Review(m *model.Review) *resource.Review {
 		Comment: m.Comment,
 	}
 }
+
+func Reviews(ms []*model.Review) *resource.List {
+	data := make([]any, 0, len(ms))
+	for _, m := range ms {
+		data = append(data, Review(m))
+	}
+
+	return &resource.List{
+		Object: "list",
+		Data:   data,
+	}
+}

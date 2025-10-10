@@ -222,7 +222,7 @@ func main() {
 		ar, err := oauth2Server.NewAuthorizeRequest(ctx, r)
 		if err != nil {
 			panic(err)
-			oauth2Server.WriteAuthorizeError(ctx, w, ar, err)
+			// oauth2Server.WriteAuthorizeError(ctx, w, ar, err)
 		}
 
 		ar.GrantScope("openid")

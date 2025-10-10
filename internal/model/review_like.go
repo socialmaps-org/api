@@ -1,14 +1,17 @@
 package model
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+)
 
-func LikeReview(db *sql.DB, reviewID, userID uint64) {
-	tx, err := db.Begin()
+func LikeReview(ctx context.Context, db *sql.DB, reviewID, userID string) {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(ctx,
 		`
 		INSERT INTO ReviewLikes (
 			  review_id
@@ -34,13 +37,13 @@ func LikeReview(db *sql.DB, reviewID, userID uint64) {
 	}
 }
 
-func UnlikeReview(db *sql.DB, reviewID, userID uint64) {
-	tx, err := db.Begin()
+func UnlikeReview(ctx context.Context, db *sql.DB, reviewID, userID string) {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(ctx,
 		`
 		DELETE FROM ReviewLikes
 		WHERE
