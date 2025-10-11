@@ -53,14 +53,18 @@ func (h *Authorize) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(fmt.Errorf("%+v", err))
 	}
 
-	ar.GrantScope("openid")
+	ar.GrantScope("offline_access")
 
 	now := time.Now().UTC()
 	mySessionData := &openid.DefaultSession{
 		Claims: &jwt.IDTokenClaims{
-			Issuer:    "https://auth.socialmaps.org",
-			Subject:   usr.ID,
-			ExpiresAt: now.Add(time.Hour * 6),
+			Issuer:      "https://auth.socialmaps.org",
+			Subject:     usr.ID,
+			Audience:    []string{ar.GetClient().GetID()},
+			ExpiresAt:   now.Add(time.Hour * 6),
+			IssuedAt:    now,
+			RequestedAt: now,
+			AuthTime:    now,
 		},
 	}
 

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
@@ -13,6 +13,7 @@ import (
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/compose"
 	"github.com/ory/fosite/storage"
+	"github.com/ory/fosite/token/jwt"
 
 	envvar "github.com/caarlos0/env/v11"
 
@@ -45,7 +46,7 @@ func main() {
 		RedirectURL:  fmt.Sprintf("http://%s/auth/callback", env.Host),
 	}
 
-	store := storage.NewExampleStore()
+	store := storage.NewMemoryStore()
 
 	secret := []byte("ndZC4kpqi6f*!3!v2TDYpfqbAyMATT")
 	hashedSecret, err := bcrypt.GenerateFromPassword(secret, bcrypt.DefaultCost)
@@ -59,20 +60,41 @@ func main() {
 			"http://127.0.0.1:8000/auth/callback",
 			"https://app.insomnia.rest/oauth/redirect",
 		},
-		Scopes: []string{"openid"},
+		Scopes: []string{"openid", "offline_access"},
+		GrantTypes: []string{
+			"authorization_code",
+			"refresh_token",
+		},
+		ResponseTypes: []string{"code"},
 	}
 
 	privateKey := crypto.LoadRSAKey(env.Oauth2PrivateKeyFile)
-	oauth2Server := compose.ComposeAllEnabled(
-		&fosite.Config{
-			IDTokenIssuer:              "org.socialmaps",
-			EnforcePKCE:                true,
-			AccessTokenLifespan:        time.Minute * 30,
-			GlobalSecret:               env.OAuth2Secret,
-			SendDebugMessagesToClients: true,
-		},
+
+	config := fosite.Config{
+		IDTokenIssuer:              "https://auth.socialmaps.org",
+		EnforcePKCE:                true,
+		AccessTokenLifespan:        env.AccessTokenLifespan,
+		RefreshTokenLifespan:       env.RefreshTokenLifespan,
+		AuthorizeCodeLifespan:      env.AuthCodeLifespan,
+		IDTokenLifespan:            env.IDTokenLifespan,
+		RefreshTokenScopes:         []string{"offline_access"},
+		GlobalSecret:               env.OAuth2Secret,
+		SendDebugMessagesToClients: true,
+	}
+	oauth2Server := compose.Compose(
+		&config,
 		store,
-		privateKey,
+		&compose.CommonStrategy{
+			CoreStrategy: compose.NewOAuth2HMACStrategy(&config),
+			Signer: &jwt.DefaultSigner{GetPrivateKey: func(context.Context) (interface{}, error) {
+				return privateKey, nil
+			}},
+		},
+		compose.OAuth2AuthorizeExplicitFactory,
+		compose.OAuth2RefreshTokenGrantFactory,
+		compose.OAuth2TokenIntrospectionFactory,
+		compose.OAuth2TokenRevocationFactory,
+		compose.OAuth2PKCEFactory,
 	)
 
 	db := database.Open("db.sqlite3")
