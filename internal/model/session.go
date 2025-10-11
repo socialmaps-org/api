@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"time"
 )
@@ -10,39 +11,71 @@ type Session struct {
 
 	ID        string
 	UserID    string
-	CreatedAt time.Time
+	Created   time.Time
+	Updated   time.Time
 	RevokedAt *time.Time
 }
 
-func CreateSession(db *sql.DB, userID string) *Session {
-	tx, err := db.Begin()
+const sessionColumns = `
+	  created
+	, updated
+	, id
+	, user_id
+	, revoked_at
+`
+
+func scanSession(row *sql.Row) *Session {
+	var ses Session
+	var created, updated int64
+	var revokedAt sql.NullInt64
+
+	err := row.Scan(
+		&created,
+		&updated,
+		&ses.ID,
+		&ses.UserID,
+		&revokedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		panic(err)
+	}
+
+	// Convert Unix timestamps to time.Time
+	ses.Created = time.Unix(created, 0)
+	ses.Updated = time.Unix(updated, 0)
+	if revokedAt.Valid {
+		t := time.Unix(revokedAt.Int64, 0)
+		ses.RevokedAt = &t
+	}
+
+	return &ses
+}
+
+func CreateSession(ctx context.Context, db *sql.DB, userID string) *Session {
+	id := randomID("ses_")
+
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	row := tx.QueryRow(
+	row := tx.QueryRowContext(ctx,
 		`
 		INSERT INTO Sessions (
-			  user_id
-			, created_at
-		) VALUES (
-		 	  @user_id
-			, unixepoch()
-		) RETURNING
 			  id
 			, user_id
-			, created_at
-			, revoked_at
-		;
-		`,
+		) VALUES (
+		 	  @id
+		 	, @user_id
+		) RETURNING `+sessionColumns+`;`,
+		sql.Named("id", id),
 		sql.Named("user_id", userID),
 	)
 
-	ses, err := scanSession(row)
-	if err != nil {
-		panic(err)
-	}
-	ses.DB = db
+	ses := scanSession(row)
 
 	err = tx.Commit()
 	if err != nil {
@@ -52,14 +85,10 @@ func CreateSession(db *sql.DB, userID string) *Session {
 	return ses
 }
 
-func LoadActiveSession(db *sql.DB, id string) *Session {
-	row := db.QueryRow(
+func LoadActiveSession(ctx context.Context, db *sql.DB, id string) *Session {
+	row := db.QueryRowContext(ctx,
 		`
-		SELECT
-			  id
-			, user_id
-			, created_at
-			, revoked_at
+		SELECT `+sessionColumns+`
 		FROM
 			Sessions
 		WHERE
@@ -68,10 +97,7 @@ func LoadActiveSession(db *sql.DB, id string) *Session {
 		`,
 		sql.Named("id", id),
 	)
-	ses, err := scanSession(row)
-	if err != nil && err != sql.ErrNoRows {
-		panic(err)
-	}
+	ses := scanSession(row)
 	if ses == nil {
 		return nil
 	}
@@ -79,49 +105,31 @@ func LoadActiveSession(db *sql.DB, id string) *Session {
 		return nil
 	}
 
-	ses.DB = db
-
 	return ses
 }
 
-func (ses *Session) Revoke() {
-	tx, err := ses.DB.Begin()
+func RevokeSession(ctx context.Context, db *sql.DB, id string) *Session {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	ses.DB.Exec(
+	row := db.QueryRowContext(ctx,
 		`
-		UPDATE
-			  revoked_at = unixepoch()
-		FROM
-			Sessions
+		UPDATE Sessions SET
+			  revoked_at = unixepoch()			
 		WHERE
 			id = @id
-		;
-		`,
-		sql.Named("id", ses.ID),
+		RETURNING `+sessionColumns+`;`,
+		sql.Named("id", id),
 	)
+
+	ses := scanSession(row)
 
 	err = tx.Commit()
 	if err != nil {
 		panic(err)
 	}
-}
 
-func scanSession(row *sql.Row) (*Session, error) {
-	var createdAt, revokedAt *int64
-	var ses Session
-	err := row.Scan(&ses.ID, &ses.UserID, &createdAt, &revokedAt)
-	if err != nil {
-		return nil, err
-	}
-
-	ses.CreatedAt = time.Unix(*createdAt, 0).UTC()
-	if revokedAt != nil {
-		t := time.Unix(*revokedAt, 0).UTC()
-		ses.RevokedAt = &t
-	}
-
-	return &ses, nil
+	return ses
 }

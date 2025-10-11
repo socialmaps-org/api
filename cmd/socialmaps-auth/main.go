@@ -1,14 +1,9 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"encoding/base64"
-	"encoding/json"
-	"html/template"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -17,54 +12,40 @@ import (
 
 	"github.com/ory/fosite"
 	"github.com/ory/fosite/compose"
-	"github.com/ory/fosite/handler/openid"
 	"github.com/ory/fosite/storage"
-	"github.com/ory/fosite/token/jwt"
 
+	envvar "github.com/caarlos0/env/v11"
+
+	"codeberg.org/socialmaps/auth/internal/crypto"
 	"codeberg.org/socialmaps/auth/internal/database"
-	"codeberg.org/socialmaps/auth/internal/model"
-	"codeberg.org/socialmaps/auth/internal/session"
+	"codeberg.org/socialmaps/auth/internal/env"
+	"codeberg.org/socialmaps/auth/internal/handler"
 )
 
-type userinfo struct {
-	Sub               string `json:"sub"`
-	PreferredUsername string `json:"preferred_username"`
-}
-
 func main() {
-	OSMClientID, ok := os.LookupEnv("OSM_CLIENT_ID")
-	if !ok {
-		panic("Environment variable `OSM_CLIENT_ID` is not set")
-	}
-	OSMClientSecret, ok := os.LookupEnv("OSM_CLIENT_SECRET")
-	if !ok {
-		panic("Environment variable `OSM_CLIENT_SECRET` is not set")
-	}
-	SESSION_SECRET_B64, ok := os.LookupEnv("SESSION_SECRET")
-	if !ok {
-		panic("Environment variable `SESSION_SECRET` is not set")
-	}
-	SESSION_SECRET, err := base64.StdEncoding.DecodeString(SESSION_SECRET_B64)
+	var env env.AuthEnv
+
+	err := envvar.ParseWithOptions(&env, envvar.Options{
+		RequiredIfNoDef: true,
+	})
 	if err != nil {
-		panic("Could not decode `SESSION_SECRET`")
-	}
-	if len(SESSION_SECRET) < 32 {
-		panic("`SESSION_SECRET` is too short; must be at least 32 bytes when decoded")
+		panic(err)
 	}
 
-	indexTemplate := template.Must(template.ParseFiles("web/template/index.gohtml", "web/template/base.gohtml"))
-	loginTemplate := template.Must(template.ParseFiles("web/template/login.gohtml", "web/template/base.gohtml"))
-	logoutTemplate := template.Must(template.ParseFiles("web/template/logout.gohtml", "web/template/base.gohtml"))
+	if len(env.CookieSecret) < 32 {
+		panic("environment variable `COOKIE_SECRET` is too short: must be at least 32 bytes when decoded")
+	}
 
-	oauth2Config := &oauth2.Config{
-		ClientID:     OSMClientID,
-		ClientSecret: OSMClientSecret,
+	oauth2ClientConfig := &oauth2.Config{
+		ClientID:     env.OSMClientID,
+		ClientSecret: env.OSMClientSecret,
 		Scopes:       []string{"openid"},
 		Endpoint:     endpoints.OpenStreetMap,
-		RedirectURL:  "http://127.0.0.1:8080/auth/callback",
+		RedirectURL:  fmt.Sprintf("http://%s/auth/callback", env.Host),
 	}
 
 	store := storage.NewExampleStore()
+
 	secret := []byte("ndZC4kpqi6f*!3!v2TDYpfqbAyMATT")
 	hashedSecret, err := bcrypt.GenerateFromPassword(secret, bcrypt.DefaultCost)
 	if err != nil {
@@ -77,15 +58,14 @@ func main() {
 		Scopes:       []string{"openid"},
 	}
 
-	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	var oauth2Server = compose.ComposeAllEnabled(
+	privateKey := crypto.LoadRSAKey(env.Oauth2PrivateKeyFile)
+	oauth2Server := compose.ComposeAllEnabled(
 		&fosite.Config{
 			IDTokenIssuer:              "org.socialmaps",
-			EnforcePKCE:                false,
+			EnforcePKCE:                true,
 			AccessTokenLifespan:        time.Minute * 30,
-			GlobalSecret:               []byte("some-cool-secret-that-is-32bytes"),
+			GlobalSecret:               env.OAuth2Secret,
 			SendDebugMessagesToClients: true,
-			// ...
 		},
 		store,
 		privateKey,
@@ -94,193 +74,23 @@ func main() {
 	db := database.Open("db.sqlite3")
 	defer db.Close()
 
-	http.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		type indexTemplateData struct {
-			User *model.User
-		}
+	c := handler.Common{
+		DB:  db,
+		Env: env,
+	}
 
-		var usr *model.User
-		cookie, err := r.Cookie(session.COOKIE_NAME)
-		if err != nil && err != http.ErrNoCookie {
-			panic(err)
-		}
-
-		if cookie != nil {
-			sessionID := session.FromCookie(SESSION_SECRET, cookie)
-			session := model.LoadActiveSession(db, sessionID)
-			if session != nil {
-				usr = model.LoadUser(db, session.UserID)
-			}
-		}
-
-		err = indexTemplate.Execute(
-			w,
-			indexTemplateData{
-				User: usr,
-			},
-		)
-		if err != nil {
-			log.Println(err)
-		}
-	})
-
-	http.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
-		type loginTemplateData struct {
-			User *model.User
-		}
-
-		var usr *model.User
-		cookie, err := r.Cookie(session.COOKIE_NAME)
-		if err != nil && err != http.ErrNoCookie {
-			panic(err)
-		}
-
-		if cookie != nil {
-			sessionID := session.FromCookie(SESSION_SECRET, cookie)
-			session := model.LoadActiveSession(db, sessionID)
-			if session != nil {
-				usr = model.LoadUser(db, session.UserID)
-			}
-		}
-
-		err = loginTemplate.Execute(
-			w,
-			loginTemplateData{
-				User: usr,
-			},
-		)
-		if err != nil {
-			log.Println(err)
-		}
-	})
-
-	http.HandleFunc("GET /logout", func(w http.ResponseWriter, r *http.Request) {
-		http.SetCookie(w, session.EmptyCookie())
-
-		cookie, err := r.Cookie(session.COOKIE_NAME)
-		if err != nil && err != http.ErrNoCookie {
-			panic(err)
-		}
-
-		if cookie != nil {
-			sessionID := session.FromCookie(SESSION_SECRET, cookie)
-			ses := model.LoadActiveSession(db, sessionID)
-			if ses != nil {
-				ses.Revoke()
-			}
-		}
-
-		err = logoutTemplate.Execute(w, nil)
-		if err != nil {
-			panic(err)
-		}
-	})
-
-	http.HandleFunc("GET /auth/openstreetmap", func(w http.ResponseWriter, r *http.Request) {
-		authCodeURL := oauth2Config.AuthCodeURL("foo", oauth2.ApprovalForce)
-		log.Println(authCodeURL)
-		http.Redirect(w, r, authCodeURL, http.StatusSeeOther)
-	})
-
-	http.HandleFunc("GET /auth/callback", func(w http.ResponseWriter, r *http.Request) {
-		code := r.FormValue("code")
-		tok, err := oauth2Config.Exchange(r.Context(), code)
-		if err != nil {
-			panic(err)
-		}
-
-		client := oauth2Config.Client(r.Context(), tok)
-
-		res, err := client.Get("https://www.openstreetmap.org/oauth2/userinfo")
-		if err != nil {
-			panic(err)
-		}
-
-		var userinfo userinfo
-		err = json.NewDecoder(res.Body).Decode(&userinfo)
-		if err != nil {
-			panic(err)
-		}
-
-		user := model.CreateOrUpdateUser(db, "org.openstreetmap", userinfo.Sub, userinfo.PreferredUsername)
-
-		ses := model.CreateSession(db, user.ID)
-		sesCookie := session.ToCookie(SESSION_SECRET, ses.ID)
-
-		http.SetCookie(w, sesCookie)
-
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-	})
-
+	http.Handle("GET /{$}", &handler.Index{Common: c})
+	http.Handle("GET /login", &handler.Login{Common: c})
+	http.Handle("GET /logout", &handler.Logout{Common: c})
+	// OAuth2 Client
+	http.Handle("GET /auth/openstreetmap", &handler.AuthnOSM{Common: c, OAuth2Config: oauth2ClientConfig})
+	http.Handle("GET /auth/callback", &handler.AuthnCallback{Common: c, OAuth2Config: oauth2ClientConfig})
 	// OAuth2 Server
-	// =========================================================================
-	http.HandleFunc("/oauth2/authorize", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+	http.Handle("/oauth2/authorize", &handler.Authorize{Common: c, OAuth2Server: oauth2Server})
+	http.Handle("/oauth2/token", &handler.Token{Common: c, OAuth2Server: oauth2Server})
 
-		// AuthorizeRequest will analyze the request and extract important
-		// information like scopes, response type and others.
-		ar, err := oauth2Server.NewAuthorizeRequest(ctx, r)
-		if err != nil {
-			panic(err)
-			// oauth2Server.WriteAuthorizeError(ctx, w, ar, err)
-		}
-
-		ar.GrantScope("openid")
-
-		now := time.Now().UTC()
-		mySessionData := &openid.DefaultSession{
-			Claims: &jwt.IDTokenClaims{
-				Issuer:      "https://auth.socialmaps.org",
-				Subject:     "bora",
-				Audience:    []string{"http://127.0.0.1:8000"},
-				ExpiresAt:   now.Add(time.Hour * 6),
-				IssuedAt:    now,
-				RequestedAt: now,
-				AuthTime:    now,
-			},
-		}
-
-		response, err := oauth2Server.NewAuthorizeResponse(ctx, ar, mySessionData)
-		if err != nil {
-			panic(err)
-		}
-
-		oauth2Server.WriteAuthorizeResponse(ctx, w, ar, response)
-	})
-
-	http.HandleFunc("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
-		// This context will be passed to all methods.
-		ctx := r.Context()
-
-		now := time.Now().UTC()
-		mySessionData := &openid.DefaultSession{
-			Claims: &jwt.IDTokenClaims{
-				Issuer:      "https://auth.socialmaps.org",
-				Audience:    []string{"http://127.0.0.1:8000"},
-				ExpiresAt:   now.Add(time.Hour * 6),
-				IssuedAt:    now,
-				RequestedAt: now,
-				AuthTime:    now,
-			},
-		}
-
-		accessRequest, err := oauth2Server.NewAccessRequest(ctx, r, mySessionData)
-		if err != nil {
-			oauth2Server.WriteAccessError(ctx, w, accessRequest, err)
-		}
-
-		accessRequest.GrantScope("openid")
-
-		response, err := oauth2Server.NewAccessResponse(ctx, accessRequest)
-		if err != nil {
-			oauth2Server.WriteAccessError(ctx, w, accessRequest, err)
-		}
-
-		oauth2Server.WriteAccessResponse(ctx, w, accessRequest, response)
-	})
-
-	log.Println("serving...")
-	err = http.ListenAndServe("127.0.0.1:8080", nil)
+	slog.Info("socialmaps-auth serving...")
+	err = http.ListenAndServe(env.Host, nil)
 	if err != nil && err != http.ErrServerClosed {
 		panic(err)
 	}
