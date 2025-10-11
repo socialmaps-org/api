@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 
 	"codeberg.org/socialmaps/auth/internal/model"
 	"codeberg.org/socialmaps/auth/internal/session"
@@ -15,7 +17,8 @@ type Login struct {
 
 func (h *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	type loginTemplateData struct {
-		User *model.User
+		User     *model.User
+		LoginOSM string
 	}
 
 	var usr *model.User
@@ -32,10 +35,18 @@ func (h *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	loginOSM := "/auth/openstreetmap"
+
+	redirectURI := r.FormValue("redirect_uri")
+	if redirectURI != "" {
+		loginOSM += fmt.Sprintf("?redirect_uri=%s", url.QueryEscape(redirectURI))
+	}
+
 	err = templates.Login.Execute(
 		w,
 		loginTemplateData{
-			User: usr,
+			User:     usr,
+			LoginOSM: loginOSM,
 		},
 	)
 	if err != nil {

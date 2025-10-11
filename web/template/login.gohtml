@@ -13,7 +13,7 @@
 <p>You're already logged in as <span id="username">{{.User.Username}}</span>.</p>
 <p><a href="/logout">Log out</a></p>
 {{ else }}
-<p><a href="/auth/openstreetmap">Sign in with OpenStreetMap</a></p>
+<p><a href="{{ .LoginOSM }}">Sign in with OpenStreetMap</a></p>
 {{ end }}
 {{end}}
 

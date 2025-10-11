@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"codeberg.org/socialmaps/auth/internal/model"
@@ -27,7 +28,8 @@ func (h *Authorize) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if cookie == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		redirectURI := url.QueryEscape(fmt.Sprintf("%s?%s", r.URL.Path, r.URL.RawQuery))
+		http.Redirect(w, r, "/login?redirect_uri="+redirectURI, http.StatusSeeOther)
 		return
 	}
 

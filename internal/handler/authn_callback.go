@@ -2,12 +2,15 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 
 	"codeberg.org/socialmaps/auth/internal/model"
 	"codeberg.org/socialmaps/auth/internal/session"
 	"codeberg.org/socialmaps/auth/internal/web"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/endpoints"
 )
 
 type AuthnCallback struct {
@@ -16,8 +19,25 @@ type AuthnCallback struct {
 }
 
 func (h *AuthnCallback) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	callbackURL := fmt.Sprintf("http://%s/auth/callback", h.Env.Host)
+
+	redirectURI := r.FormValue("redirect_uri")
+	if redirectURI != "" {
+		callbackURL += "?redirect_uri=" + url.QueryEscape(redirectURI)
+	}
+
+	cfg := oauth2.Config{
+		ClientID:     h.Env.OSMClientID,
+		ClientSecret: h.Env.OSMClientSecret,
+		Scopes:       []string{"openid"},
+		Endpoint:     endpoints.OpenStreetMap,
+		RedirectURL:  callbackURL,
+	}
+
 	code := r.FormValue("code")
-	tok, err := h.OAuth2Config.Exchange(r.Context(), code)
+	tok, err := cfg.Exchange(ctx, code)
 	if err != nil {
 		rerr := err.(*oauth2.RetrieveError)
 		web.JSON(w, http.StatusBadRequest, struct {
@@ -32,7 +52,7 @@ func (h *AuthnCallback) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := h.OAuth2Config.Client(r.Context(), tok)
+	client := cfg.Client(ctx, tok)
 
 	res, err := client.Get("https://www.openstreetmap.org/oauth2/userinfo")
 	if err != nil {
@@ -48,12 +68,17 @@ func (h *AuthnCallback) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	user := model.CreateOrUpdateUser(r.Context(), h.DB, "org.openstreetmap", userinfo.Sub, userinfo.PreferredUsername)
+	user := model.CreateOrUpdateUser(ctx, h.DB, "org.openstreetmap", userinfo.Sub, userinfo.PreferredUsername)
 
-	ses := model.CreateSession(r.Context(), h.DB, user.ID)
+	ses := model.CreateSession(ctx, h.DB, user.ID)
 	sesCookie := session.ToCookie(h.Env.CookieSecret, ses.ID)
 
 	http.SetCookie(w, sesCookie)
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	if redirectURI != "" {
+		// TODO: validate redirectURI
+		http.Redirect(w, r, redirectURI, http.StatusSeeOther)
+	} else {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
 }

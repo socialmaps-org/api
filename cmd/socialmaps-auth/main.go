@@ -20,6 +20,7 @@ import (
 	"codeberg.org/socialmaps/auth/internal/database"
 	"codeberg.org/socialmaps/auth/internal/env"
 	"codeberg.org/socialmaps/auth/internal/handler"
+	"codeberg.org/socialmaps/auth/internal/middleware"
 )
 
 func main() {
@@ -52,10 +53,13 @@ func main() {
 		panic(err)
 	}
 	store.Clients["my-client"] = &fosite.DefaultClient{
-		ID:           "my-client",
-		Secret:       hashedSecret,
-		RedirectURIs: []string{"http://127.0.0.1:8000/auth/callback"},
-		Scopes:       []string{"openid"},
+		ID:     "my-client",
+		Secret: hashedSecret,
+		RedirectURIs: []string{
+			"http://127.0.0.1:8000/auth/callback",
+			"https://app.insomnia.rest/oauth/redirect",
+		},
+		Scopes: []string{"openid"},
 	}
 
 	privateKey := crypto.LoadRSAKey(env.Oauth2PrivateKeyFile)
@@ -79,15 +83,15 @@ func main() {
 		Env: env,
 	}
 
-	http.Handle("GET /{$}", &handler.Index{Common: c})
-	http.Handle("GET /login", &handler.Login{Common: c})
-	http.Handle("GET /logout", &handler.Logout{Common: c})
+	http.Handle("GET /{$}", middleware.CanonicalLog(&handler.Index{Common: c}))
+	http.Handle("GET /login", middleware.CanonicalLog(&handler.Login{Common: c}))
+	http.Handle("GET /logout", middleware.CanonicalLog(&handler.Logout{Common: c}))
 	// OAuth2 Client
-	http.Handle("GET /auth/openstreetmap", &handler.AuthnOSM{Common: c, OAuth2Config: oauth2ClientConfig})
-	http.Handle("GET /auth/callback", &handler.AuthnCallback{Common: c, OAuth2Config: oauth2ClientConfig})
+	http.Handle("GET /auth/openstreetmap", middleware.CanonicalLog(&handler.AuthnOSM{Common: c, OAuth2Config: oauth2ClientConfig}))
+	http.Handle("GET /auth/callback", middleware.CanonicalLog(&handler.AuthnCallback{Common: c, OAuth2Config: oauth2ClientConfig}))
 	// OAuth2 Server
-	http.Handle("/oauth2/authorize", &handler.Authorize{Common: c, OAuth2Server: oauth2Server})
-	http.Handle("/oauth2/token", &handler.Token{Common: c, OAuth2Server: oauth2Server})
+	http.Handle("/oauth2/authorize", middleware.CanonicalLog(&handler.Authorize{Common: c, OAuth2Server: oauth2Server}))
+	http.Handle("/oauth2/token", middleware.CanonicalLog(&handler.Token{Common: c, OAuth2Server: oauth2Server}))
 
 	slog.Info("socialmaps-auth serving...")
 	err = http.ListenAndServe(env.Host, nil)
