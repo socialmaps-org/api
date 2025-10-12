@@ -72,7 +72,7 @@ func ToCookie(key []byte, sessionID string) *http.Cookie {
 func FromCookie(key []byte, cookie *http.Cookie) string {
 	tagmsg, err := base64.URLEncoding.DecodeString(cookie.Value)
 	if err != nil {
-		panic(err)
+		return ""
 	}
 
 	tag := tagmsg[:sha256.Size]
@@ -87,7 +87,7 @@ func FromCookie(key []byte, cookie *http.Cookie) string {
 
 	ok := hmac.Equal(act, tag)
 	if !ok {
-		panic("hmac invalid")
+		return ""
 	}
 
 	var val cookieValue

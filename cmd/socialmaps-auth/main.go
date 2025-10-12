@@ -17,6 +17,7 @@ import (
 
 	envvar "github.com/caarlos0/env/v11"
 
+	"codeberg.org/socialmaps/auth/internal/contrib/nonce"
 	"codeberg.org/socialmaps/auth/internal/crypto"
 	"codeberg.org/socialmaps/auth/internal/database"
 	"codeberg.org/socialmaps/auth/internal/env"
@@ -46,40 +47,56 @@ func main() {
 		RedirectURL:  fmt.Sprintf("http://%s/auth/callback", env.Host),
 	}
 
-	store := storage.NewMemoryStore()
-
-	secret := []byte("ndZC4kpqi6f*!3!v2TDYpfqbAyMATT")
-	hashedSecret, err := bcrypt.GenerateFromPassword(secret, bcrypt.DefaultCost)
+	nonceService, err := nonce.NewNonceService(65536, "")
 	if err != nil {
 		panic(err)
 	}
+
+	store := storage.NewMemoryStore()
+
+	// clientSecret := []byte("ndZC4kpqi6f*!3!v2TDYpfqbAyMATT")
+	// hashedClientSecret, err := bcrypt.GenerateFromPassword(clientSecret, bcrypt.DefaultCost)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	smAPIClientSecret := []byte("ndZC4kpqi6f*!3!ouafiwahfohl")
+	smAPIClientHashedSecret, err := bcrypt.GenerateFromPassword(smAPIClientSecret, bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+
+	store.Clients["socialmaps-api"] = &fosite.DefaultClient{
+		ID:     "socialmaps-api",
+		Secret: smAPIClientHashedSecret,
+	}
 	store.Clients["my-client"] = &fosite.DefaultClient{
-		ID:     "my-client",
-		Secret: hashedSecret,
+		ID: "my-client",
 		RedirectURIs: []string{
 			"http://127.0.0.1:8000/auth/callback",
 			"https://app.insomnia.rest/oauth/redirect",
 		},
-		Scopes: []string{"openid", "offline_access"},
+		Scopes: []string{"offline_access", "review"},
 		GrantTypes: []string{
 			"authorization_code",
 			"refresh_token",
 		},
 		ResponseTypes: []string{"code"},
+		Public:        true,
 	}
 
 	privateKey := crypto.LoadRSAKey(env.Oauth2PrivateKeyFile)
 
 	config := fosite.Config{
-		IDTokenIssuer:              "https://auth.socialmaps.org",
-		EnforcePKCE:                true,
-		AccessTokenLifespan:        env.AccessTokenLifespan,
-		RefreshTokenLifespan:       env.RefreshTokenLifespan,
-		AuthorizeCodeLifespan:      env.AuthCodeLifespan,
-		IDTokenLifespan:            env.IDTokenLifespan,
-		RefreshTokenScopes:         []string{"offline_access"},
-		GlobalSecret:               env.OAuth2Secret,
-		SendDebugMessagesToClients: true,
+		IDTokenIssuer:                 "https://auth.socialmaps.org",
+		EnforcePKCE:                   true,
+		AccessTokenLifespan:           env.AccessTokenLifespan,
+		RefreshTokenLifespan:          env.RefreshTokenLifespan,
+		AuthorizeCodeLifespan:         env.AuthCodeLifespan,
+		IDTokenLifespan:               env.IDTokenLifespan,
+		GlobalSecret:                  env.OAuth2Secret,
+		SendDebugMessagesToClients:    true,
+		DisableRefreshTokenValidation: true,
 	}
 	oauth2Server := compose.Compose(
 		&config,
@@ -109,11 +126,30 @@ func main() {
 	http.Handle("GET /login", middleware.CanonicalLog(&handler.Login{Common: c}))
 	http.Handle("GET /logout", middleware.CanonicalLog(&handler.Logout{Common: c}))
 	// OAuth2 Client
-	http.Handle("GET /auth/openstreetmap", middleware.CanonicalLog(&handler.AuthnOSM{Common: c, OAuth2Config: oauth2ClientConfig}))
-	http.Handle("GET /auth/callback", middleware.CanonicalLog(&handler.AuthnCallback{Common: c, OAuth2Config: oauth2ClientConfig}))
+	http.Handle(
+		"GET /auth/openstreetmap",
+		middleware.CanonicalLog(&handler.AuthnOSM{
+			Common:       c,
+			OAuth2Config: oauth2ClientConfig,
+			NonceService: nonceService,
+		}))
+	http.Handle(
+		"GET /auth/callback",
+		middleware.CanonicalLog(&handler.AuthnCallback{
+			Common:       c,
+			OAuth2Config: oauth2ClientConfig,
+			NonceService: nonceService,
+		}))
 	// OAuth2 Server
 	http.Handle("/oauth2/authorize", middleware.CanonicalLog(&handler.Authorize{Common: c, OAuth2Server: oauth2Server}))
 	http.Handle("/oauth2/token", middleware.CanonicalLog(&handler.Token{Common: c, OAuth2Server: oauth2Server}))
+	http.Handle(
+		"/oauth2/introspect",
+		&handler.Introspect{
+			Common:       c,
+			OAuth2Server: oauth2Server,
+		},
+	)
 
 	slog.Info("socialmaps-auth serving...")
 	err = http.ListenAndServe(env.Host, nil)

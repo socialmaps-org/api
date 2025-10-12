@@ -2,60 +2,56 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 
+	"codeberg.org/socialmaps/auth/internal/contrib/nonce"
 	"codeberg.org/socialmaps/auth/internal/model"
+	"codeberg.org/socialmaps/auth/internal/resource"
 	"codeberg.org/socialmaps/auth/internal/session"
 	"codeberg.org/socialmaps/auth/internal/web"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/endpoints"
 )
 
 type AuthnCallback struct {
 	Common
+	NonceService *nonce.NonceService
 	OAuth2Config *oauth2.Config
 }
 
 func (h *AuthnCallback) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	callbackURL := fmt.Sprintf("http://%s/auth/callback", h.Env.Host)
-
+	// Create a copy of the OAuth2 config as we're changing its RedirectURL
+	// based on the current request specifically.
+	cfg := *h.OAuth2Config
 	redirectURI := r.FormValue("redirect_uri")
 	if redirectURI != "" {
-		callbackURL += "?redirect_uri=" + url.QueryEscape(redirectURI)
-	}
-
-	cfg := oauth2.Config{
-		ClientID:     h.Env.OSMClientID,
-		ClientSecret: h.Env.OSMClientSecret,
-		Scopes:       []string{"openid"},
-		Endpoint:     endpoints.OpenStreetMap,
-		RedirectURL:  callbackURL,
+		cfg.RedirectURL += "?redirect_uri=" + url.QueryEscape(redirectURI)
 	}
 
 	code := r.FormValue("code")
-	tok, err := cfg.Exchange(ctx, code)
-	if err != nil {
-		rerr := err.(*oauth2.RetrieveError)
-		web.JSON(w, http.StatusBadRequest, struct {
-			ErrorCode        string `json:"error"`
-			ErrorDescription string `json:"error_description"`
-			ErrorURI         string `json:"error_uri,omitempty"`
-		}{
-			ErrorCode:        rerr.ErrorCode,
-			ErrorDescription: rerr.ErrorDescription,
-			ErrorURI:         rerr.ErrorURI,
+	state := r.FormValue("state")
+
+	if ok := h.NonceService.Valid(state); !ok {
+		web.JSON(w, http.StatusBadRequest, &resource.Error{
+			Message: "query parameter `state` is invalid or missing",
 		})
 		return
 	}
 
-	client := cfg.Client(ctx, tok)
+	tok, err := cfg.Exchange(ctx, code)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		web.Flush(w)
+		panic(err)
+	}
 
+	client := cfg.Client(ctx, tok)
 	res, err := client.Get("https://www.openstreetmap.org/oauth2/userinfo")
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		web.Flush(w)
 		panic(err)
 	}
 
@@ -65,6 +61,8 @@ func (h *AuthnCallback) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	err = json.NewDecoder(res.Body).Decode(&userinfo)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		web.Flush(w)
 		panic(err)
 	}
 

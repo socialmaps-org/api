@@ -53,7 +53,11 @@ func (h *Authorize) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(fmt.Errorf("%+v", err))
 	}
 
-	ar.GrantScope("offline_access")
+	for _, scope := range ar.GetRequestedScopes() {
+		if scope == "review" || scope == "offline_access" {
+			ar.GrantScope(scope)
+		}
+	}
 
 	now := time.Now().UTC()
 	mySessionData := &openid.DefaultSession{
@@ -66,6 +70,8 @@ func (h *Authorize) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			RequestedAt: now,
 			AuthTime:    now,
 		},
+		Username: usr.Username,
+		Subject:  usr.ID,
 	}
 
 	response, err := h.OAuth2Server.NewAuthorizeResponse(ctx, ar, mySessionData)

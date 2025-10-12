@@ -1,37 +1,35 @@
 package handler
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 
+	"codeberg.org/socialmaps/auth/internal/contrib/nonce"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/endpoints"
 )
 
 type AuthnOSM struct {
 	Common
+	NonceService *nonce.NonceService
 	OAuth2Config *oauth2.Config
 }
 
 func (h *AuthnOSM) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	callbackURL := fmt.Sprintf("http://%s/auth/callback", h.Env.Host)
-
+	// Create a copy of the OAuth2 config as we're changing its RedirectURL
+	// based on the current request specifically.
+	cfg := *h.OAuth2Config
 	redirectURI := r.FormValue("redirect_uri")
 	if redirectURI != "" {
-		callbackURL += "?redirect_uri=" + url.QueryEscape(redirectURI)
+		cfg.RedirectURL += "?redirect_uri=" + url.QueryEscape(redirectURI)
 	}
 
-	cfg := oauth2.Config{
-		ClientID:     h.Env.OSMClientID,
-		ClientSecret: h.Env.OSMClientSecret,
-		Scopes:       []string{"openid"},
-		Endpoint:     endpoints.OpenStreetMap,
-		RedirectURL:  callbackURL,
+	state, err := h.NonceService.Nonce()
+	if err != nil {
+		panic(err)
 	}
 
-	authCodeURL := cfg.AuthCodeURL("foo", oauth2.ApprovalForce)
+	authCodeURL := cfg.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 	log.Println(authCodeURL)
 	http.Redirect(w, r, authCodeURL, http.StatusSeeOther)
 }
