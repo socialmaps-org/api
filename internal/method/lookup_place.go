@@ -6,18 +6,19 @@ import (
 	"log/slog"
 	"net/http"
 
-	"codeberg.org/socialmaps/auth/internal/fun"
-	"codeberg.org/socialmaps/auth/internal/geo"
-	"codeberg.org/socialmaps/auth/internal/model"
-	"codeberg.org/socialmaps/auth/internal/name"
-	"codeberg.org/socialmaps/auth/internal/overpass"
-	"codeberg.org/socialmaps/auth/internal/render"
-	"codeberg.org/socialmaps/auth/internal/resource"
-	"codeberg.org/socialmaps/auth/internal/web"
+	"codeberg.org/socialmaps/api/internal/fun"
+	"codeberg.org/socialmaps/api/internal/geo"
+	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/name"
+	"codeberg.org/socialmaps/api/internal/overpass"
+	"codeberg.org/socialmaps/api/internal/render"
+	"codeberg.org/socialmaps/api/internal/resource"
+	"codeberg.org/socialmaps/api/internal/web"
 )
 
 type LookupPlace struct {
 	Common
+	OverpassEndpoint string
 }
 
 type lookupPlaceArgs struct {
@@ -54,6 +55,7 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) *web.R
 	slog.InfoContext(ctx, "db results", "results", dbCandidates)
 
 	opRes, err := overpass.Query(
+		m.OverpassEndpoint,
 		fmt.Sprintf(
 			// OpenStreetMap requires 7 decimal places for geographic coordinates.
 			`[out:json];nwr(%.7f, %.7f, %.7f, %.7f)[name];out center tags;`,

@@ -3,8 +3,8 @@ package geo_test
 import (
 	"testing"
 
-	"codeberg.org/socialmaps/auth/internal/floats"
-	"codeberg.org/socialmaps/auth/internal/geo"
+	"codeberg.org/socialmaps/api/internal/floats"
+	"codeberg.org/socialmaps/api/internal/geo"
 )
 
 const tolerance = 0.000001

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"regexp"
 
-	"codeberg.org/socialmaps/auth/internal/database"
+	"codeberg.org/socialmaps/api/internal/database"
 )
 
 type Review struct {

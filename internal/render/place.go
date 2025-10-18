@@ -1,8 +1,8 @@
 package render
 
 import (
-	"codeberg.org/socialmaps/auth/internal/model"
-	"codeberg.org/socialmaps/auth/internal/resource"
+	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/resource"
 )
 
 func Place(m *model.Place) *resource.Place {

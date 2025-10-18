@@ -38,11 +38,6 @@ func NewJSONResponse(statusCode int, body any, headers ...string) *Response {
 	return NewResponse(statusCode, body, allHeaders...)
 }
 
-func NewTextResponse(statusCode int, body string, headers ...string) *Response {
-	allHeaders := append(headers, "Content-Type", `text/plain; charset="utf-8"`)
-	return NewResponse(statusCode, body, allHeaders...)
-}
-
 func NewEmptyResponse(statusCode int) *Response {
 	return NewResponse(statusCode, nil)
 }

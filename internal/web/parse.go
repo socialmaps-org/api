@@ -13,7 +13,7 @@ import (
 // structs, and an instance can be shared safely.
 var queryDecoder = schema.NewDecoder()
 
-func Parse(r *http.Request, v any) error {
+func parseRequest(r *http.Request, v any) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
 		panic("v must be a pointer to struct")

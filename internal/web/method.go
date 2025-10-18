@@ -2,9 +2,10 @@ package web
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
-	"codeberg.org/socialmaps/auth/internal/resource"
+	"codeberg.org/socialmaps/api/internal/resource"
 )
 
 type Method[A any] interface {
@@ -15,31 +16,41 @@ type Method[A any] interface {
 
 func MethodHandler[A any](method Method[A]) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		args := method.NewArgs()
-		if args == nil {
-			panic("method.NewArgs() returned nil")
+		if args != nil {
+			if err := parseRequest(r, args); err != nil {
+				res := NewJSONResponse(
+					http.StatusBadRequest,
+					resource.Error{
+						Message: err.Error(),
+					},
+				)
+				slog.InfoContext(ctx, "CANONICAL-METHOD-LINE",
+					"http_status", res.StatusCode,
+				)
+				res.send(w)
+				return
+			}
+
+			if res := method.Validate(args); res != nil {
+				slog.InfoContext(ctx, "CANONICAL-METHOD-LINE",
+					"http_status", res.StatusCode,
+				)
+				res.send(w)
+				return
+			}
 		}
 
-		if err := Parse(r, args); err != nil {
-			NewJSONResponse(
-				http.StatusBadRequest,
-				resource.Error{
-					Message: err.Error(),
-				},
-			).send(w)
-			return
+		res := method.Execute(ctx, args)
+		if res == nil {
+			panic("method returned empty result")
 		}
 
-		if res := method.Validate(args); res != nil {
-			res.send(w)
-			return
-		}
-
-		res := method.Execute(r.Context(), args)
-		if res != nil {
-			res.send(w)
-		} else {
-			w.WriteHeader(http.StatusNoContent)
-		}
+		slog.InfoContext(ctx, "CANONICAL-METHOD-LINE",
+			"http_status", res.StatusCode,
+		)
+		res.send(w)
 	})
 }

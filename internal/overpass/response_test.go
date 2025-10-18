@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"codeberg.org/socialmaps/auth/internal/assert"
+	"codeberg.org/socialmaps/api/internal/assert"
 )
 
 func TestWay(t *testing.T) {

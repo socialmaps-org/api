@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	"codeberg.org/socialmaps/auth/internal/model"
-	"codeberg.org/socialmaps/auth/internal/render"
-	"codeberg.org/socialmaps/auth/internal/resource"
-	"codeberg.org/socialmaps/auth/internal/web"
+	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/render"
+	"codeberg.org/socialmaps/api/internal/resource"
+	"codeberg.org/socialmaps/api/internal/web"
 )
 
 type CreateReview struct {

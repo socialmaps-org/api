@@ -2,22 +2,19 @@ package overpass
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
-const DEFAULT_ENDPOINT = "https://overpass-api.de/api/interpreter"
-
-func Query(q string) (*Response, error) {
+func Query(endpoint, q string) (*Response, error) {
 	formData := url.Values{
 		"data": []string{q},
 	}
 
 	httpRes, err := http.DefaultClient.Post(
-		DEFAULT_ENDPOINT,
+		endpoint,
 		"application/x-www-form-urlencoded; charset=UTF-8",
 		strings.NewReader(formData.Encode()),
 	)
@@ -34,9 +31,4 @@ func Query(q string) (*Response, error) {
 
 	slog.Info("CANONICAL-OVERPASS-LINE", "status", "success", "n_elements", len(res.Elements), "query", q)
 	return &res, nil
-}
-
-func Retrieve(name string, lat, lon float64) (*Response, error) {
-	q := fmt.Sprintf(`[out:json];nwr["name"](around:10,%f,%f);out center tags;`, lat, lon)
-	return Query(q)
 }

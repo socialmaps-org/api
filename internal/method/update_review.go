@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"codeberg.org/socialmaps/auth/internal/model"
-	"codeberg.org/socialmaps/auth/internal/render"
-	"codeberg.org/socialmaps/auth/internal/resource"
-	"codeberg.org/socialmaps/auth/internal/web"
+	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/render"
+	"codeberg.org/socialmaps/api/internal/resource"
+	"codeberg.org/socialmaps/api/internal/web"
 )
 
 type UpdateReview struct {
@@ -22,7 +22,7 @@ type updateReviewArgs struct {
 }
 
 // 1 hour
-const MAX_DELAY_IN_SECS = 1 * 60 * 60
+const maxDelayInSec = 1 * 60 * 60
 
 func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) *web.Response {
 	rvwM := model.LoadReview(ctx, m.DB, args.ReviewID)
@@ -35,7 +35,7 @@ func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) *web
 		return web.NewEmptyResponse(http.StatusUnauthorized)
 	}
 
-	if time.Now().Unix()-rvwM.Created > MAX_DELAY_IN_SECS {
+	if time.Now().Unix()-rvwM.Created > maxDelayInSec {
 		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
 			Code:    resource.ErrorCodeTooLate,
 			Message: "too late to update your review",

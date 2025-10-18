@@ -3,7 +3,7 @@ package name_test
 import (
 	"testing"
 
-	"codeberg.org/socialmaps/auth/internal/name"
+	"codeberg.org/socialmaps/api/internal/name"
 )
 
 func TestBasic(t *testing.T) {
