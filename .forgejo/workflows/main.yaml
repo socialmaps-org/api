@@ -1,0 +1,16 @@
+on: [push]
+jobs:
+  test:
+    runs-on: codeberg-small
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: https://github.com/actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Check formatting
+        run: ./scripts/check-format.sh
+
