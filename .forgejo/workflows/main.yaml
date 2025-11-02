@@ -11,6 +11,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Set up Staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
       - name: Check formatting
         run: ./scripts/check-format.sh
 
