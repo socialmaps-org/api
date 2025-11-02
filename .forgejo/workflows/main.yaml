@@ -14,3 +14,14 @@ jobs:
       - name: Check formatting
         run: ./scripts/check-format.sh
 
+      - name: Check deadcode
+        run: ./scripts/check-deadcode.sh
+
+      - name: Lint
+        run: ./scripts/lint.sh
+
+      - name: Build
+        run: make
+
+      - name: Test
+        run: go test ./...
