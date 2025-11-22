@@ -1,51 +1,25 @@
 CREATE TABLE "Users" (
-      "created"         INTEGER NOT NULL DEFAULT (unixepoch())
-    , "updated"         INTEGER NOT NULL DEFAULT (unixepoch())
+      "created"         INTEGER NOT NULL DEFAULT (my_unixepoch())
+    , "updated"         INTEGER NOT NULL DEFAULT (my_unixepoch())
     , "id"              TEXT    PRIMARY KEY
-    , "openid_provider" TEXT    NOT NULL
-    , "openid_subject"  TEXT    NOT NULL
-    , "username"        TEXT    NOT NULL
+    , "osm_id"          INTEGER NOT NULL
+    , "display_name"    TEXT    NOT NULL
 
     , CONSTRAINT "id"     CHECK ("id" LIKE 'usr_%')
-    , CONSTRAINT "openid" UNIQUE ("openid_provider", "openid_subject") 
 ) STRICT;
+
+CREATE UNIQUE INDEX users_osm ON Users (osm_id);
 
 CREATE TRIGGER "enforce_user_constants"
 BEFORE UPDATE OF "created" ON "Users" BEGIN
     SELECT raise(FAIL, 'cannot update the "created" column');
 END;
-    
+
 CREATE TRIGGER "update_user_on_update"
 AFTER UPDATE ON "Users"
 FOR EACH ROW BEGIN
     UPDATE "Users" SET
-        "updated" = unixepoch()
-    WHERE
-        "id" = NEW."id"
-    ;
-END;
-
-
-CREATE TABLE "Sessions" (
-      "created"    INTEGER NOT NULL DEFAULT (unixepoch())
-    , "updated"    INTEGER NOT NULL DEFAULT (unixepoch())
-    , "id"         TEXT    PRIMARY KEY
-    , "user_id"    TEXT    NOT NULL REFERENCES "Users" ("id")
-    , "revoked_at" INTEGER
-
-    , CONSTRAINT "id" CHECK ("id" LIKE 'ses_%')
-) STRICT;
-
-CREATE TRIGGER "enforce_session_constants"
-BEFORE UPDATE OF "created" ON "Users" BEGIN
-    SELECT raise(FAIL, 'cannot update the "created" column');
-END;
-    
-CREATE TRIGGER "update_session_on_update"
-AFTER UPDATE ON "Sessions"
-FOR EACH ROW BEGIN
-    UPDATE "Sessions" SET
-        "updated" = unixepoch()
+        "updated" = my_unixepoch()
     WHERE
         "id" = NEW."id"
     ;
@@ -53,8 +27,8 @@ END;
 
 
 CREATE TABLE "Places" (
-      "created"        INTEGER NOT NULL DEFAULT (unixepoch())
-    , "updated"        INTEGER NOT NULL DEFAULT (unixepoch())
+      "created"        INTEGER NOT NULL DEFAULT (my_unixepoch())
+    , "updated"        INTEGER NOT NULL DEFAULT (my_unixepoch())
     , "id"             TEXT    PRIMARY KEY
     , "name"           TEXT    NOT NULL
     , "lat"            REAL    NOT NULL
@@ -68,7 +42,7 @@ CREATE TABLE "Places" (
     -- decayed number of dislikes
     , "dec_n_dislikes" REAL    NOT NULL DEFAULT 0
     -- decayed numbers last updated (recalculated) at
-    , "dec_updated_at" INTEGER NOT NULL DEFAULT (unixepoch())
+    , "dec_updated_at" INTEGER NOT NULL DEFAULT (my_unixepoch())
 
     , CONSTRAINT "id"             CHECK ("id" LIKE 'plc_%')
     , CONSTRAINT "name"           CHECK (length("name") <= 256)
@@ -90,12 +64,12 @@ CREATE TRIGGER enforce_place_constants
 BEFORE UPDATE OF created ON Places BEGIN
     SELECT raise(FAIL, 'cannot update the "created" column');
 END;
-    
+
 CREATE TRIGGER update_place_on_update
 AFTER UPDATE ON Places
 FOR EACH ROW BEGIN
     UPDATE Places SET
-        updated = unixepoch()
+        updated = my_unixepoch()
     WHERE
         id = NEW.id
     ;
@@ -103,17 +77,17 @@ END;
 
 
 CREATE TABLE Reviews (
-      created        INTEGER NOT NULL DEFAULT (unixepoch())
-    , updated        INTEGER NOT NULL DEFAULT (unixepoch())
+      created        INTEGER NOT NULL DEFAULT (my_unixepoch())
+    , updated        INTEGER NOT NULL DEFAULT (my_unixepoch())
     , id             TEXT    PRIMARY KEY
     , place_id       TEXT    NOT NULL REFERENCES Places (id)
     , user_id        TEXT    NOT NULL REFERENCES Users (id)
     , liked          INTEGER NOT NULL
     , comment        TEXT
     , n_likes        INTEGER NOT NULL DEFAULT 0
-    , dec_n_likes    REAL NOT NULL DEFAULT 0
+    , dec_n_likes    REAL    NOT NULL DEFAULT 0
     -- decay updated (recalculated) at
-    , dec_updated_at INTEGER
+    , dec_updated_at INTEGER NOT NULL DEFAULT (my_unixepoch())
 
     , CONSTRAINT "id"          CHECK ("id" LIKE 'rvw_%')
     , CONSTRAINT "liked"       CHECK ("liked" IN (TRUE, FALSE))
@@ -157,16 +131,16 @@ FOR EACH ROW BEGIN
         , "n_dislikes"
             = "n_dislikes" + if(NOT NEW.liked, 1, 0)
         , "dec_n_likes"
-            = "dec_n_likes" * pow(2, -(unixepoch()-"dec_updated_at")/15552000.0) + if(NEW.liked, 1, 0)
+            = "dec_n_likes" * pow(2, -(my_unixepoch()-"dec_updated_at")/15552000.0) + if(NEW.liked, 1, 0)
         , "dec_n_dislikes"
-            = "dec_n_dislikes" * pow(2, -(unixepoch()-"dec_updated_at")/15552000.0) + if(NOT NEW.liked, 1, 0)
+            = "dec_n_dislikes" * pow(2, -(my_unixepoch()-"dec_updated_at")/15552000.0) + if(NOT NEW.liked, 1, 0)
     WHERE
         id = NEW.place_id
     ;
     -- Update "dec_updated_at" separately so that you can refer to its previous
-    -- value while calculating time elapsed (`unixepoch()-dec_updated_at`).
+    -- value while calculating time elapsed (`my_unixepoch()-dec_updated_at`).
     UPDATE Places SET
-        dec_updated_at = unixepoch()
+        dec_updated_at = my_unixepoch()
     WHERE
         id = NEW.place_id
     ;
@@ -176,7 +150,7 @@ CREATE TRIGGER on_review_update
 AFTER UPDATE ON Reviews
 FOR EACH ROW BEGIN
     UPDATE Reviews SET
-        updated = unixepoch()
+        updated = my_unixepoch()
     WHERE
         id = NEW.id
     ;
@@ -240,11 +214,11 @@ END;
 
 
 CREATE TABLE ReviewLikes (
-      created   INTEGER NOT NULL DEFAULT (unixepoch())
-    , updated   INTEGER NOT NULL DEFAULT (unixepoch())
-    , id        INTEGER PRIMARY KEY AUTOINCREMENT
-    , review_id INTEGER NOT NULL REFERENCES Reviews (id)
-    , user_id   INTEGER NOT NULL REFERENCES Users (id)
+      created   INTEGER NOT NULL DEFAULT (my_unixepoch())
+    , updated   INTEGER NOT NULL DEFAULT (my_unixepoch())
+    , id        INTEGER PRIMARY KEY
+    , review_id TEXT    NOT NULL REFERENCES Reviews (id)
+    , user_id   TEXT    NOT NULL REFERENCES Users (id)
 ) STRICT;
 
 CREATE UNIQUE INDEX uniq_user_review_like ON ReviewLikes (review_id, user_id);
@@ -253,7 +227,10 @@ CREATE TRIGGER on_reviewlike_insert
 AFTER INSERT ON ReviewLikes
 FOR EACH ROW BEGIN
     UPDATE Reviews SET
-        n_likes = n_likes + 1
+          n_likes
+            = n_likes + 1
+        , dec_n_likes
+            = dec_n_likes * pow(2, -(my_unixepoch()-dec_updated_at)/15552000.0) + 1
     WHERE
         id = NEW.review_id
     ;

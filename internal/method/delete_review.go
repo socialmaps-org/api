@@ -18,6 +18,16 @@ type deleteReviewArgs struct {
 }
 
 func (m *DeleteReview) Execute(ctx context.Context, args *deleteReviewArgs) *web.Response {
+	usr := web.GetAuthUser(ctx)
+
+	rvw := model.LoadReview(ctx, m.DB, args.ReviewID)
+	if rvw == nil {
+		return web.NewResponse(http.StatusNotFound, nil)
+	} else if rvw.UserID != usr.ID {
+		// Users cannot delete others' reviews
+		return web.NewResponse(http.StatusForbidden, nil)
+	}
+
 	model.DeleteReview(ctx, m.DB, args.ReviewID)
 	return web.NewResponse(http.StatusNoContent, nil)
 }

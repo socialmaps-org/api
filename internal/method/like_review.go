@@ -18,10 +18,17 @@ type likeReviewArgs struct {
 }
 
 func (m *LikeReview) Execute(ctx context.Context, args *likeReviewArgs) *web.Response {
-	userID := "usr_foo"
+	usr := web.GetAuthUser(ctx)
 
-	model.LikeReview(ctx, m.DB, userID, args.ReviewID)
+	rvw := model.LoadReview(ctx, m.DB, args.ReviewID)
+	if rvw == nil {
+		return web.NewResponse(http.StatusNotFound, nil)
+	} else if rvw.UserID == usr.ID {
+		// Users cannot like their own reviews
+		return web.NewResponse(http.StatusForbidden, nil)
+	}
 
+	model.LikeReview(ctx, m.DB, args.ReviewID, usr.ID)
 	return web.NewEmptyResponse(http.StatusNoContent)
 }
 

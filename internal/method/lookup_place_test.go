@@ -1,9 +1,13 @@
 package method
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/model"
@@ -47,99 +51,85 @@ const overpassDoc = `
 
 func TestLookupNew(t *testing.T) {
 	// Arrange
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got, want := r.URL.Path, "/api/interpreter"; got != want {
-			t.Errorf("path: %#v, want: %#v", got, want)
-		}
+	ctx := t.Context()
 
-		if got, want := r.FormValue("data"), `[out:json];nwr(51.8951601, -8.4717157, 51.8953399, -8.4714243)[name];out center tags;`; got != want {
-			t.Errorf("body: %#v, want: %#v", got, want)
-		}
+	db := database.Open(":memory:")
+
+	overpassSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/api/interpreter", r.URL.Path)
+		require.Equal(
+			t,
+			`[out:json];nwr(51.8951601, -8.4717157, 51.8953399, -8.4714243)[name];out center tags;`,
+			r.FormValue("data"),
+		)
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(overpassDoc))
 	}))
-	defer server.Close()
+	defer overpassSrv.Close()
 
-	db := database.Open(":memory:")
-	method := LookupPlace{
-		Common: Common{
-			DB: db,
-		},
-		OverpassEndpoint: server.URL + "/api/interpreter",
-	}
+	authr := NewTestAuthenticator(t)
+	srv := NewTestServer(t, authr, db, overpassSrv.URL+"/api/interpreter")
 
 	// Act
-	res := method.Execute(t.Context(), &lookupPlaceArgs{
-		Name: "izz cafe",
-		Lat:  51.89525,
-		Lon:  -8.47157,
-	})
+	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
+	require.NoError(t, err)
+	req.URL.RawQuery = url.Values{
+		"name": {"izz cafe"},
+		"lat":  {"51.89525"},
+		"lon":  {"-8.47157"},
+	}.Encode()
+
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
 
 	// Assert
-	if got, want := res.StatusCode, 200; got != want {
-		t.Fatalf("statusCode: %d, want: %d", got, 200)
-	}
+	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	plc, ok := res.Body.(*resource.Place)
-	if !ok {
-		t.Fatalf("returned resource is not a Place")
-	}
+	var plcR resource.Place
+	err = json.NewDecoder(res.Body).Decode(&plcR)
+	require.NoError(t, err)
+	require.Equal(t, "Izz Cafe", plcR.Name)
+	require.Equal(t, 51.8952597, plcR.Location.Lat)
+	require.Equal(t, -8.4715779, plcR.Location.Lon)
 
-	if got, want := plc.Name, "Izz Cafe"; got != want {
-		t.Errorf("name: %s, want: %s", got, want)
-	}
-
-	if got, want := plc.Location.Lat, 51.8952597; got != want {
-		// OpenStreetMap requires 7 decimal places for geographic coordinates.
-		t.Errorf("lat: %.7f, want: %.7f", got, want)
-	}
-
-	if got, want := plc.Location.Lon, -8.4715779; got != want {
-		// OpenStreetMap requires 7 decimal places for geographic coordinates.
-		t.Errorf("lon: %.7f, want: %.7f", got, want)
-	}
+	plcM := model.LoadPlaceByID(ctx, db, plcR.ID)
+	require.NotNil(t, plcM)
+	require.Equal(t, "Izz Cafe", plcM.Name)
+	require.Equal(t, 51.8952597, plcM.Lat)
+	require.Equal(t, -8.4715779, plcM.Lon)
 }
 
 func TestLookupExisting(t *testing.T) {
 	// Arrange
+	ctx := t.Context()
+
 	db := database.Open(":memory:")
-	model.CreatePlace(t.Context(), db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
-	method := LookupPlace{
-		Common: Common{
-			DB: db,
-		},
-		OverpassEndpoint: "",
-	}
+
+	model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
+
+	authr := NewTestAuthenticator(t)
+	srv := NewTestServer(t, authr, db, "")
 
 	// Act
-	res := method.Execute(t.Context(), &lookupPlaceArgs{
-		Name: "izz cafe",
-		Lat:  51.89525,
-		Lon:  -8.47157,
-	})
+	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
+	require.NoError(t, err)
+	req.URL.RawQuery = url.Values{
+		"name": {"izz cafe"},
+		"lat":  {"51.89525"},
+		"lon":  {"-8.47157"},
+	}.Encode()
+
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
 
 	// Assert
-	if got, want := res.StatusCode, 200; got != want {
-		t.Fatalf("statusCode: %d, want: %d", got, 200)
-	}
+	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	plc, ok := res.Body.(*resource.Place)
-	if !ok {
-		t.Fatalf("returned resource is not a Place")
-	}
-
-	if got, want := plc.Name, "Izz Cafe"; got != want {
-		t.Errorf("name: %s, want: %s", got, want)
-	}
-
-	if got, want := plc.Location.Lat, 51.8952597; got != want {
-		// OpenStreetMap requires 7 decimal places for geographic coordinates.
-		t.Errorf("lat: %.7f, want: %.7f", got, want)
-	}
-
-	if got, want := plc.Location.Lon, -8.4715779; got != want {
-		// OpenStreetMap requires 7 decimal places for geographic coordinates.
-		t.Errorf("lon: %.7f, want: %.7f", got, want)
-	}
+	var plcR resource.Place
+	err = json.NewDecoder(res.Body).Decode(&plcR)
+	require.NoError(t, err)
+	require.Equal(t, "Izz Cafe", plcR.Name)
+	require.Equal(t, 51.8952597, plcR.Location.Lat)
+	require.Equal(t, -8.4715779, plcR.Location.Lon)
 }

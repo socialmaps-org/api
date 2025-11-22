@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"codeberg.org/socialmaps/api/internal/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWay(t *testing.T) {
@@ -47,9 +47,7 @@ func TestWay(t *testing.T) {
 	err := json.Unmarshal(doc, &res)
 
 	// Assert
-	if err != nil {
-		t.Errorf("could not parse JSON: %s", err.Error())
-	}
+	require.NoError(t, err)
 }
 
 func TestNode(t *testing.T) {
@@ -85,5 +83,5 @@ func TestNode(t *testing.T) {
 	err := json.Unmarshal(doc, &res)
 
 	// Assert
-	assert.Equal(t, nil, err)
+	require.NoError(t, err)
 }

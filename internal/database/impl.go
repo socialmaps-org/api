@@ -5,14 +5,25 @@ import (
 	_ "embed"
 	"log"
 
-	_ "github.com/mattn/go-sqlite3"
+	"codeberg.org/socialmaps/api/internal/mytime"
+	"github.com/mattn/go-sqlite3"
 )
 
 //go:embed "migrations/000 - initial schema.sql"
 var migration0 string
 
+func init() {
+	sql.Register("sqlite3_extended", &sqlite3.SQLiteDriver{
+		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+			return conn.RegisterFunc("my_unixepoch", func() int64 {
+				return mytime.Now().Unix()
+			}, false)
+		},
+	})
+}
+
 func Open(dataSourceName string) *sql.DB {
-	db, err := sql.Open("sqlite3", dataSourceName)
+	db, err := sql.Open("sqlite3_extended", dataSourceName)
 	if err != nil {
 		panic(err)
 	}
@@ -45,6 +56,8 @@ func initialize(db *sql.DB) {
 	case 1:
 		log.Println("database has the latest schema")
 	}
+
+	tx.Exec("PRAGMA foreign_keys = ON;")
 
 	err = tx.Commit()
 	if err != nil {

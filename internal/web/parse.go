@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"reflect"
 
@@ -20,12 +21,24 @@ func parseRequest(r *http.Request, v any) error {
 	}
 
 	if err := parsePath(r, v); err != nil {
+		slog.InfoContext(r.Context(), "parse-request-error",
+			"component", "path",
+			"error", err,
+		)
 		return err
 	}
 	if err := parseQuery(r, v); err != nil {
+		slog.InfoContext(r.Context(), "parse-request-error",
+			"component", "query",
+			"error", err,
+		)
 		return err
 	}
 	if err := parseJSON(r, v); err != nil {
+		slog.InfoContext(r.Context(), "parse-request-error",
+			"component", "body",
+			"error", err,
+		)
 		return err
 	}
 	return nil

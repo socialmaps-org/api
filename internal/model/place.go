@@ -71,7 +71,7 @@ func scanPlace(scn database.Scanner) *Place {
 }
 
 func CreatePlace(ctx context.Context, db *sql.DB, name string, lat float64, lon float64, osmType string, osmID uint64) *Place {
-	id := randomID("plc_")
+	id := NewRandomID("plc")
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -80,21 +80,24 @@ func CreatePlace(ctx context.Context, db *sql.DB, name string, lat float64, lon 
 
 	row := tx.QueryRowContext(ctx, `
 		INSERT INTO Places (
-			  id
+			  created
+			, id
 			, name
 			, lat
 			, lon
 			, osm_type
 			, osm_id
 		) VALUES (
-		 	  @id
+		 	  @created
+		 	, @id
 			, @name
 			, @lat
 			, @lon
 			, @osm_type
 			, @osm_id
 		) RETURNING `+placeColumns+`;`,
-		sql.Named("id", id),
+		sql.Named("created", id.time.Unix()),
+		sql.Named("id", id.String()),
 		sql.Named("name", name),
 		sql.Named("lat", lat),
 		sql.Named("lon", lon),

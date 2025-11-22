@@ -18,9 +18,14 @@ type unlikeReviewArgs struct {
 }
 
 func (m *UnlikeReview) Execute(ctx context.Context, args *unlikeReviewArgs) *web.Response {
-	userID := "usr_foo"
+	usr := web.GetAuthUser(ctx)
 
-	model.UnlikeReview(ctx, m.DB, userID, args.ReviewID)
+	rvw := model.LoadReview(ctx, m.DB, args.ReviewID)
+	if rvw == nil {
+		return web.NewResponse(http.StatusNotFound, nil)
+	}
+
+	model.UnlikeReview(ctx, m.DB, args.ReviewID, usr.ID)
 
 	return web.NewEmptyResponse(http.StatusNoContent)
 }

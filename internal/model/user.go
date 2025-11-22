@@ -3,17 +3,56 @@ package model
 import (
 	"context"
 	"database/sql"
+	"strconv"
+	"time"
+
+	"codeberg.org/socialmaps/api/internal/database"
 )
 
 type User struct {
+	Created     time.Time
+	Updated     time.Time
 	ID          string
-	OIDProvider string
-	OIDSubject  string
-	Username    string
+	OSMID       int
+	DisplayName string
 }
 
-func CreateOrUpdateUser(ctx context.Context, db *sql.DB, oidProvider, oidSubject, username string) *User {
-	id := randomID("usr_")
+const userCols = `
+	  created
+	, updated
+	, id
+	, osm_id
+	, display_name
+`
+
+func scanUser(scn database.Scanner) *User {
+	var created, updated int64
+
+	var usr User
+	err := scn.Scan(
+		&created,
+		&updated,
+		&usr.ID,
+		&usr.OSMID,
+		&usr.DisplayName,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	usr.Created = time.Unix(created, 0)
+	usr.Updated = time.Unix(updated, 0)
+
+	return &usr
+}
+
+func UpsertUser(ctx context.Context, db *sql.DB, osmSub string, displayName string) *User {
+	id := NewRandomID("usr")
+
+	osmID, err := strconv.Atoi(osmSub)
+	if err != nil {
+		panic(err)
+	}
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -23,31 +62,24 @@ func CreateOrUpdateUser(ctx context.Context, db *sql.DB, oidProvider, oidSubject
 	row := tx.QueryRowContext(ctx,
 		`
 		INSERT INTO Users (
-			  id
-			, openid_provider
-			, openid_subject
-			, username
+			  created
+			, id
+			, osm_id
+			, display_name
 		) VALUES (
-		 	  @id
-			, @openid_provider
-			, @openid_subject
-			, @username
+		 	  @created
+		 	, @id
+			, @osm_id
+			, @display_name
 		) ON CONFLICT DO UPDATE SET
-		 	  username = @username
-		WHERE 
-			openid_provider = @openid_provider AND
-			openid_subject = @openid_subject
-		RETURNING
-			  id
-			, openid_provider
-			, openid_subject
-			, username
-		;
-		`,
-		sql.Named("id", id),
-		sql.Named("openid_provider", oidProvider),
-		sql.Named("openid_subject", oidSubject),
-		sql.Named("username", username),
+		 	  display_name = @display_name
+		WHERE
+			osm_id = @osm_id
+		RETURNING `+userCols+`;`,
+		sql.Named("created", id.time.Unix()),
+		sql.Named("id", id.String()),
+		sql.Named("display_name", displayName),
+		sql.Named("osm_id", osmID),
 	)
 
 	usr := scanUser(row)
@@ -58,34 +90,4 @@ func CreateOrUpdateUser(ctx context.Context, db *sql.DB, oidProvider, oidSubject
 	}
 
 	return usr
-}
-
-func LoadUser(ctx context.Context, db *sql.DB, id string) *User {
-	row := db.QueryRowContext(ctx,
-		`
-		SELECT
-			  id
-			, openid_provider
-			, openid_subject
-			, username
-		FROM
-			Users
-		WHERE
-			id = @id
-		;
-		`,
-		sql.Named("id", id),
-	)
-	usr := scanUser(row)
-	return usr
-}
-
-func scanUser(row *sql.Row) *User {
-	var usr User
-	err := row.Scan(&usr.ID, &usr.OIDProvider, &usr.OIDSubject, &usr.Username)
-	if err != nil {
-		panic(err)
-	}
-
-	return &usr
 }

@@ -1,6 +1,8 @@
 package resource
 
-type List struct {
-	Object string `json:"object"`
-	Data   []any  `json:"data"`
+type List[E any] struct {
+	Object        string  `json:"object"`
+	Data          []E     `json:"data"`
+	StartingAfter *string `json:"starting_after"`
+	EndingBefore  *string `json:"ending_before"`
 }

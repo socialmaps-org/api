@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+go test -tags sqlite_math_functions -count=1 ./...

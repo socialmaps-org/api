@@ -21,7 +21,14 @@ type createReviewArgs struct {
 }
 
 func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) *web.Response {
-	rvwM := model.CreateReview(ctx, m.DB, args.PlaceID, "usr_foo", args.Liked, args.Comment)
+	usr := web.GetAuthUser(ctx)
+
+	plc := model.LoadPlaceByID(ctx, m.DB, args.PlaceID)
+	if plc == nil {
+		return web.NewEmptyResponse(http.StatusNotFound)
+	}
+
+	rvwM := model.CreateReview(ctx, m.DB, args.PlaceID, usr.ID, args.Liked, args.Comment)
 
 	rvwR := render.Review(rvwM)
 

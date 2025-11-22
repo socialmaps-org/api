@@ -19,7 +19,7 @@ type Review struct {
 	Liked        bool
 	Comment      string
 	NLikes       uint64
-	DecNLikes    uint64
+	DecNLikes    float64
 	DecUpdatedAt *int64
 }
 
@@ -63,7 +63,7 @@ func scanReview(scn database.Scanner) *Review {
 }
 
 func CreateReview(ctx context.Context, db *sql.DB, placeID, userID string, liked bool, comment string) *Review {
-	id := randomID("rvw_")
+	id := NewRandomID("rvw")
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -72,19 +72,22 @@ func CreateReview(ctx context.Context, db *sql.DB, placeID, userID string, liked
 
 	row := tx.QueryRowContext(ctx, `
 		INSERT INTO Reviews (
-			  id
+			  created
+			, id
 			, place_id
 			, user_id
 			, liked
 			, comment
 		) VALUES (
-		 	  @id
+		 	  @created
+		 	, @id
 		 	, @place_id
 			, @user_id
 			, @liked
 			, @comment
 		) RETURNING `+reviewColumns+`;`,
-		sql.Named("id", id),
+		sql.Named("created", id.time.Unix()),
+		sql.Named("id", id.String()),
 		sql.Named("place_id", placeID),
 		sql.Named("user_id", userID),
 		sql.Named("liked", liked),
@@ -156,16 +159,20 @@ func UpdateReview(ctx context.Context, db *sql.DB, id string, liked bool, commen
 	return rvw
 }
 
-func ListLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string) []*Review {
+func ListLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string, limit uint) []*Review {
 	rows, err := db.QueryContext(ctx, `
 		SELECT `+reviewColumns+`
 		FROM Reviews
 		WHERE
 			place_id = @place_id
 		ORDER BY
-			created DESC
+			  created DESC
+			, id      DESC
+		LIMIT
+			@limit
 		`,
 		sql.Named("place_id", placeID),
+		sql.Named("limit", limit),
 	)
 	if err != nil {
 		panic(err)
@@ -176,7 +183,80 @@ func ListLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string) [
 		rvw := scanReview(rows)
 		reviews = append(reviews, rvw)
 	}
+	if err = rows.Err(); err != nil {
+		panic(err)
+	}
 
+	return reviews
+}
+
+func ListNextLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string, limit uint, next string) []*Review {
+	nextID := ParseID(next)
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT `+reviewColumns+`
+		FROM Reviews
+		WHERE
+			    place_id = @place_id
+			AND created <= @next_created
+			AND id < @next
+		ORDER BY
+			  created DESC
+			, id      DESC
+		LIMIT
+			@limit
+		`,
+		sql.Named("place_id", placeID),
+		sql.Named("next_created", nextID.time.Unix()),
+		sql.Named("next", next),
+		sql.Named("limit", limit),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	var reviews []*Review
+	for rows.Next() {
+		rvw := scanReview(rows)
+		reviews = append(reviews, rvw)
+	}
+	if err = rows.Err(); err != nil {
+		panic(err)
+	}
+
+	return reviews
+}
+
+func ListPrevLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string, limit uint, prev string) []*Review {
+	prevID := ParseID(prev)
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT `+reviewColumns+`
+		FROM Reviews
+		WHERE
+			    place_id = @place_id
+			AND created >= @prev_created
+			AND id > @prev
+		ORDER BY
+			  created DESC
+			, id      DESC
+		LIMIT
+			@limit
+		`,
+		sql.Named("place_id", placeID),
+		sql.Named("prev_created", prevID.time.Unix()),
+		sql.Named("prev", prev),
+		sql.Named("limit", limit),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	var reviews []*Review
+	for rows.Next() {
+		rvw := scanReview(rows)
+		reviews = append(reviews, rvw)
+	}
 	if err = rows.Err(); err != nil {
 		panic(err)
 	}

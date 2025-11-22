@@ -2,6 +2,7 @@ package method
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -25,14 +26,16 @@ type updateReviewArgs struct {
 const maxDelayInSec = 1 * 60 * 60
 
 func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) *web.Response {
+	usr := web.GetAuthUser(ctx)
+
 	rvwM := model.LoadReview(ctx, m.DB, args.ReviewID)
 	if rvwM == nil {
 		return web.NewEmptyResponse(http.StatusNotFound)
 	}
 
-	// TODO
-	if rvwM.UserID != "usr_foo" {
-		return web.NewEmptyResponse(http.StatusUnauthorized)
+	if rvwM.UserID != usr.ID {
+		slog.InfoContext(ctx, "CANONICAL-METHOD-LINE", "review_user", rvwM.UserID, "auth_user", usr.ID)
+		return web.NewEmptyResponse(http.StatusForbidden)
 	}
 
 	if time.Now().Unix()-rvwM.Created > maxDelayInSec {
