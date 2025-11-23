@@ -8,6 +8,7 @@ require (
 	github.com/gorilla/schema v1.4.1
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20251119195548-4e0068c0098b
 	golang.org/x/text v0.21.0
 )
 

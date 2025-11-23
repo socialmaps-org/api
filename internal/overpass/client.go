@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	_ "golang.org/x/crypto/x509roots/fallback"
 )
 
 func Query(endpoint, q string) (*Response, error) {
