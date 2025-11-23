@@ -1,0 +1,52 @@
+image: golang:1.25.4-trixie
+
+stages:
+  - test
+  - build
+
+test-format:
+  stage: test
+  script:
+    - ./scripts/check-format.sh
+
+test-deadcode:
+  stage: test
+  script:
+    - ./scripts/check-deadcode.sh
+
+test-lint:
+  stage: test
+  before_script:
+    - go install honnef.co/go/tools/cmd/staticcheck@latest
+  script:
+    - ./scripts/lint.sh
+
+test-code:
+  stage: test
+  script:
+    - ./scripts/test.sh
+
+build-binary:
+  stage: build
+  script:
+    - make
+
+build-image:
+  stage: build
+  image: docker:cli
+  services:
+    - docker:dind
+  variables:
+    DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  # All branches are tagged with $DOCKER_IMAGE_NAME (defaults to commit ref slug)
+  # Default branch is also tagged with `latest`
+  script:
+    - docker build --pull -t "$DOCKER_IMAGE_NAME" .
+    - docker push "$DOCKER_IMAGE_NAME"
+    - |
+      if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
+        docker tag "$DOCKER_IMAGE_NAME" "$CI_REGISTRY_IMAGE:latest"
+        docker push "$CI_REGISTRY_IMAGE:latest"
+      fi
