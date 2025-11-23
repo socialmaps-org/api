@@ -12,5 +12,7 @@ RUN make
 
 FROM debian:trixie
 
+WORKDIR /root
+
 COPY --from=0 /usr/src/app/bin/socialmaps-api /bin/socialmaps-api
-CMD ["/bin/socialmaps-api"]
+ENTRYPOINT ["/bin/socialmaps-api"]
