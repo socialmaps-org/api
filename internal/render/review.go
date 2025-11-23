@@ -21,16 +21,21 @@ func Review(m *model.Review) *resource.Review {
 	}
 }
 
-func Reviews(ms []*model.Review) *resource.List[*model.Review] {
+func Reviews(ms []*model.Review) *resource.List[*resource.Review] {
 	var startingAfter, endingBefore *string
 	if len(ms) != 0 {
 		startingAfter = &ms[len(ms)-1].ID
 		endingBefore = &ms[0].ID
 	}
 
-	return &resource.List[*model.Review]{
+	var rs []*resource.Review
+	for _, m := range ms {
+		rs = append(rs, Review(m))
+	}
+
+	return &resource.List[*resource.Review]{
 		Object:        "list",
-		Data:          ms,
+		Data:          rs,
 		StartingAfter: startingAfter,
 		EndingBefore:  endingBefore,
 	}
