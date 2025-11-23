@@ -16,7 +16,7 @@ type ListReviews struct {
 
 type listReviewsArgs struct {
 	PlaceID       string `path:"place_id"`
-	Limit         uint   `schema:"limit"`
+	Limit         uint   `schema:"limit,default:10"`
 	StartingAfter string `schema:"starting_after"`
 	EndingBefore  string `schema:"ending_before"`
 }
