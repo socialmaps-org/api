@@ -1,0 +1,62 @@
+when:
+  branch: main
+  event: [push, pull_request]
+
+steps:
+  - name: check-format
+    image: golang:1.25.4-trixie
+    commands:
+      - ./scripts/check-format.sh
+
+  - name: check-deadcode
+    image: golang:1.25.4-trixie
+    commands:
+      - go install golang.org/x/tools/cmd/deadcode@latest
+      - ./scripts/check-deadcode.sh
+
+  - name: lint
+    image: golang:1.25.4-trixie
+    commands:
+      - go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
+      - ./scripts/lint.sh
+
+  - name: test
+    image: golang:1.25.4-trixie
+    commands:
+      - ./scripts/test.sh
+
+  - name: make
+    image: golang:1.25.4-trixie
+    depends_on:
+      - check-format
+      - check-deadcode
+      - lint
+      - test
+    commands:
+      - make
+
+  - name: publish-dryrun
+    image: 'woodpeckerci/plugin-docker-buildx:6.0.3'
+    depends_on: [make]
+    when:
+      - event: pull_request
+    settings:
+      platforms: linux/amd64
+      dry-run: true
+
+  - name: publish
+    image: 'woodpeckerci/plugin-docker-buildx:6.0.3'
+    depends_on: [make]
+    when:
+      - event: push
+        branch: main
+    settings:
+      repo: codeberg.org/socialmaps/api
+      platforms: linux/amd64
+      auto_tag: true
+      logins:
+        - registry: https://codeberg.org
+          username:
+            from_secret: cb_username
+          password:
+            from_secret: cb_password
