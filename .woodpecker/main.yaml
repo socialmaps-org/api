@@ -3,53 +3,54 @@ when:
   event: [push, pull_request]
 
 steps:
+  - name: check-scripts
+    image: koalaman/shellcheck-alpine:latest
+    commands:
+      - ./scripts/check-scripts.sh
+
   - name: check-format
     image: golang:1.25.4-trixie
     commands:
       - ./scripts/check-format.sh
+    depends_on: [check-scripts]
 
   - name: check-deadcode
     image: golang:1.25.4-trixie
     commands:
       - go install golang.org/x/tools/cmd/deadcode@latest
       - ./scripts/check-deadcode.sh
+    depends_on: [check-scripts]
 
   - name: lint
     image: golang:1.25.4-trixie
     commands:
       - go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
       - ./scripts/lint.sh
+    depends_on: [check-scripts]
 
   - name: test
     image: golang:1.25.4-trixie
     commands:
       - ./scripts/test.sh
+    depends_on: [check-scripts]
 
   - name: make
     image: golang:1.25.4-trixie
-    depends_on:
-      - check-format
-      - check-deadcode
-      - lint
-      - test
     commands:
       - make
+    depends_on: [check-format, check-deadcode, lint, test]
 
   - name: publish-dryrun
     image: 'woodpeckerci/plugin-docker-buildx:6.0.3'
-    depends_on: [make]
-    when:
-      - event: pull_request
     settings:
       platforms: linux/amd64
       dry-run: true
+    depends_on: [make]
+    when:
+      - event: pull_request
 
   - name: publish
     image: 'woodpeckerci/plugin-docker-buildx:6.0.3'
-    depends_on: [make]
-    when:
-      - event: push
-        branch: main
     settings:
       repo: codeberg.org/socialmaps/api
       platforms: linux/amd64
@@ -60,3 +61,7 @@ steps:
             from_secret: cb_username
           password:
             from_secret: cb_password
+    depends_on: [make]
+    when:
+      - event: push
+        branch: main
