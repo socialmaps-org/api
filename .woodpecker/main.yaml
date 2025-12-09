@@ -1,6 +1,6 @@
 when:
   branch: main
-  event: [push, pull_request]
+  event: [push, pull_request, manual]
 
 steps:
   - name: check-scripts
@@ -47,7 +47,7 @@ steps:
       dry-run: true
     depends_on: [make]
     when:
-      - event: pull_request
+      - event: [pull_request, manual]
 
   - name: publish
     image: 'woodpeckerci/plugin-docker-buildx:6.0.3'
@@ -63,5 +63,5 @@ steps:
             from_secret: cb_password
     depends_on: [make]
     when:
-      - event: push
+      - event: [push, manual]
         branch: main
