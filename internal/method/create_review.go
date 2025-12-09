@@ -32,7 +32,7 @@ func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) *web
 
 	rvwR := render.Review(rvwM)
 
-	return web.NewJSONResponse(http.StatusOK, rvwR)
+	return web.NewJSONResponse(http.StatusAccepted, rvwR)
 }
 
 func (m *CreateReview) Validate(args *createReviewArgs) *web.Response {

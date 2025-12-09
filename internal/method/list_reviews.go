@@ -23,16 +23,20 @@ type listReviewsArgs struct {
 
 func (m *ListReviews) Execute(ctx context.Context, args *listReviewsArgs) *web.Response {
 	var rvwMs []*model.Review
-	if args.StartingAfter != "" {
-		rvwMs = model.ListNextLatestReviewsOfPlace(
-			ctx, m.DB, args.PlaceID, args.Limit, args.StartingAfter,
-		)
-	} else if args.EndingBefore != "" {
-		rvwMs = model.ListPrevLatestReviewsOfPlace(
+
+	if args.EndingBefore != "" {
+		rvwMs = model.ListLatestApprovedReviewsOfPlaceReverse(
 			ctx, m.DB, args.PlaceID, args.Limit, args.EndingBefore,
 		)
 	} else {
-		rvwMs = model.ListLatestReviewsOfPlace(ctx, m.DB, args.PlaceID, args.Limit)
+		next := args.StartingAfter
+		if next == "" {
+			next = model.LatestID("rvw").String()
+		}
+
+		rvwMs = model.ListLatestApprovedReviewsOfPlace(
+			ctx, m.DB, args.PlaceID, args.Limit, next,
+		)
 	}
 
 	return web.NewJSONResponse(http.StatusOK, render.Reviews(rvwMs))

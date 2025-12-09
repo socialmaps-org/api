@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -8,6 +9,8 @@ import (
 
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/method"
+	"codeberg.org/socialmaps/api/internal/mistral"
+	"codeberg.org/socialmaps/api/internal/moderation"
 	"codeberg.org/socialmaps/api/internal/web"
 )
 
@@ -16,6 +19,7 @@ func main() {
 		OAuth2IntrospectURL string `env:"OAUTH2_INTROSPECT_URL"`
 		OAuth2ClientID      string `env:"OAUTH2_CLIENT_ID" envDefault:"org.socialmaps.api"`
 		OAuth2ClientSecret  string `env:"OAUTH2_CLIENT_SECRET"`
+		MistralSecret       string `env:"MISTRAL_SECRET"`
 		DatabaseDSN         string `env:"DATABASE_DSN" envDefault:"socialmaps-api.sqlite3"`
 		ListenAddr          string `env:"LISTEN_ADDR" envDefault:"127.0.0.1:8080"`
 		OverpassEndpoint    string `env:"OVERPASS_ENDPOINT" envDefault:"https://overpass-api.de/api/interpreter"`
@@ -25,14 +29,20 @@ func main() {
 		panic(err)
 	}
 
+	db := database.Open(envvars.DatabaseDSN)
+	defer db.Close()
+
+	// Start the background jobs
+	ctx := context.Background()
+	mod := moderation.NewMistralLarge2512v1(mistral.NewClient(envvars.MistralSecret))
+	go moderation.Process(ctx, db, mod)
+
+	// Run the API server
 	authr := web.NewAuthenticator(
 		envvars.OAuth2IntrospectURL,
 		envvars.OAuth2ClientID,
 		envvars.OAuth2ClientSecret,
 	)
-
-	db := database.Open(envvars.DatabaseDSN)
-	defer db.Close()
 
 	mux := method.Mux(authr, db, envvars.OverpassEndpoint)
 

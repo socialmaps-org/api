@@ -89,7 +89,7 @@ func TestCreateReview(t *testing.T) {
 	// Assert
 	require.Equal(t, 1, authr.nIntrospectCalls)
 
-	require.Equal(t, http.StatusOK, res.StatusCode)
+	require.Equal(t, http.StatusAccepted, res.StatusCode)
 
 	var rvwR resource.Review
 	err = json.NewDecoder(res.Body).Decode(&rvwR)

@@ -28,8 +28,10 @@ func TestListReviews(t *testing.T) {
 	usrB := model.UpsertUser(ctx, db, "2", "Bob")
 	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
 	rvwA := model.CreateReview(ctx, db, plc.ID, usrA.ID, true, "I like it!")
+	model.CreateReviewDecision(ctx, db, rvwA.ID, "test-mod", true, "")
 	mockClock.Add(24 * time.Hour)
 	rvwB := model.CreateReview(ctx, db, plc.ID, usrB.ID, false, "I don't like it!")
+	model.CreateReviewDecision(ctx, db, rvwB.ID, "test-mod", true, "")
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, db, "")

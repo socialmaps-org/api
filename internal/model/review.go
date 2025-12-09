@@ -159,38 +159,7 @@ func UpdateReview(ctx context.Context, db *sql.DB, id string, liked bool, commen
 	return rvw
 }
 
-func ListLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string, limit uint) []*Review {
-	rows, err := db.QueryContext(ctx, `
-		SELECT `+reviewColumns+`
-		FROM Reviews
-		WHERE
-			place_id = @place_id
-		ORDER BY
-			  created DESC
-			, id      DESC
-		LIMIT
-			@limit
-		`,
-		sql.Named("place_id", placeID),
-		sql.Named("limit", limit),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	var reviews []*Review
-	for rows.Next() {
-		rvw := scanReview(rows)
-		reviews = append(reviews, rvw)
-	}
-	if err = rows.Err(); err != nil {
-		panic(err)
-	}
-
-	return reviews
-}
-
-func ListNextLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string, limit uint, next string) []*Review {
+func ListLatestApprovedReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string, limit uint, next string) []*Review {
 	nextID := ParseID(next)
 
 	rows, err := db.QueryContext(ctx, `
@@ -198,6 +167,7 @@ func ListNextLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID strin
 		FROM Reviews
 		WHERE
 			    place_id = @place_id
+			AND last_decision_approved
 			AND created <= @next_created
 			AND id < @next
 		ORDER BY
@@ -227,7 +197,7 @@ func ListNextLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID strin
 	return reviews
 }
 
-func ListPrevLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID string, limit uint, prev string) []*Review {
+func ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, db *sql.DB, placeID string, limit uint, prev string) []*Review {
 	prevID := ParseID(prev)
 
 	rows, err := db.QueryContext(ctx, `
@@ -235,6 +205,7 @@ func ListPrevLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID strin
 		FROM Reviews
 		WHERE
 			    place_id = @place_id
+			AND last_decision_approved
 			AND created >= @prev_created
 			AND id > @prev
 		ORDER BY
@@ -246,6 +217,43 @@ func ListPrevLatestReviewsOfPlace(ctx context.Context, db *sql.DB, placeID strin
 		sql.Named("place_id", placeID),
 		sql.Named("prev_created", prevID.time.Unix()),
 		sql.Named("prev", prev),
+		sql.Named("limit", limit),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	var reviews []*Review
+	for rows.Next() {
+		rvw := scanReview(rows)
+		reviews = append(reviews, rvw)
+	}
+	if err = rows.Err(); err != nil {
+		panic(err)
+	}
+
+	return reviews
+}
+
+func ListEarliestUnapprovedReviews(ctx context.Context, db *sql.DB, limit uint, next string) []*Review {
+	nextID := ParseID(next)
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT `+reviewColumns+`
+		FROM Reviews
+		WHERE
+			    last_decision_approved IS NULL
+			AND created >= @next_created
+			AND id > @next
+		ORDER BY
+			  created ASC
+			, id      ASC
+		LIMIT
+			@limit
+		;
+	`,
+		sql.Named("next_created", nextID.time.Unix()),
+		sql.Named("next", next),
 		sql.Named("limit", limit),
 	)
 	if err != nil {

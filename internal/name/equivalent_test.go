@@ -3,6 +3,8 @@ package name_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"codeberg.org/socialmaps/api/internal/name"
 )
 
@@ -29,21 +31,11 @@ func TestBasic(t *testing.T) {
 		{"bora's cafe", "cafe", false},
 	}
 
-	for i, d := range tests {
+	for _, d := range tests {
 		act := name.Equivalent(d.a, d.b)
-		if d.exp != act {
-			t.Errorf(
-				"Test[%d]: Equivalent(%q, %q) returned %t, expected %t",
-				i, d.a, d.b, act, d.exp,
-			)
-		}
+		require.Equal(t, d.exp, act)
 
 		act = name.Equivalent(d.b, d.a)
-		if d.exp != act {
-			t.Errorf(
-				"Test[%d]: Equivalent(%q, %q) returned %t, expected %t",
-				i, d.b, d.a, act, d.exp,
-			)
-		}
+		require.Equal(t, d.exp, act)
 	}
 }

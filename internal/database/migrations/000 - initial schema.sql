@@ -89,21 +89,28 @@ CREATE TABLE Reviews (
     -- decay updated (recalculated) at
     , dec_updated_at INTEGER NOT NULL DEFAULT (my_unixepoch())
 
+    , last_decision_at       INTEGER
+    , last_decision_by       TEXT
+    , last_decision_approved INTEGER
+
     , CONSTRAINT "id"          CHECK ("id" LIKE 'rvw_%')
     , CONSTRAINT "liked"       CHECK ("liked" IN (TRUE, FALSE))
     , CONSTRAINT "n_likes"     CHECK ("n_helpful" >= 0)
     , CONSTRAINT "dec_n_likes" CHECK ("dec_n_helpful" >= 0)
+    , CONSTRAINT "last_decision_approved" CHECK ("last_decision_approved" IN (TRUE, FALSE))
 ) STRICT;
 
 CREATE INDEX latest_reviews_by_place
 ON Reviews (
       place_id
+    , last_decision_approved
     , created DESC
 );
 
 CREATE INDEX most_liked_reviews_by_place
 ON Reviews (
       place_id
+    , last_decision_approved
     , n_likes  DESC
     , created  DESC
 );
@@ -209,6 +216,31 @@ FOR EACH ROW BEGIN
     WHERE
         id = OLD.place_id
         AND OLD.liked = TRUE
+    ;
+END;
+
+
+CREATE TABLE ReviewDecisions (
+      created   INTEGER NOT NULL DEFAULT (my_unixepoch())
+    , id        TEXT    PRIMARY KEY
+    , review_id TEXT    NOT NULL REFERENCES Reviews (id)
+    , moderator TEXT    NOT NULL
+    , approved  INTEGER NOT NULL
+    , details   TEXT    NOT NULL
+
+    , CONSTRAINT "id"       CHECK ("id" LIKE 'dec_%')
+    , CONSTRAINT "approved" CHECK ("approved" IN (TRUE, FALSE))
+) STRICT;
+
+CREATE TRIGGER on_reviewdecision_insert
+AFTER INSERT ON ReviewDecisions
+FOR EACH ROW BEGIN
+    UPDATE Reviews SET
+          last_decision_at       = NEW.created
+        , last_decision_by       = NEW.moderator
+        , last_decision_approved = NEW.approved
+    WHERE
+        id = NEW.review_id
     ;
 END;
 

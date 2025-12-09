@@ -4,3 +4,4 @@ bin/
 *.sqlite3
 .envrc
 *.pem
+.DS_Store

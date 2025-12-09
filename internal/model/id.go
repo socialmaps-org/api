@@ -12,9 +12,11 @@ import (
 )
 
 const (
-	base62alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 	ver            = "1"
 	sep            = "_"
+	base62alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	// ⌈log₆₂ 2¹²⁸⌉ = 22 chars
+	randLen = 22
 )
 
 type ID struct {
@@ -25,7 +27,8 @@ type ID struct {
 }
 
 var (
-	timeEnc = base32.StdEncoding.WithPadding(base32.NoPadding)
+	// We use base32hex because it preserves the bitwise sort order.
+	timeEnc = base32.HexEncoding.WithPadding(base32.NoPadding)
 	timeEnd = binary.BigEndian
 )
 
@@ -35,6 +38,24 @@ func NewRandomID(kind string) *ID {
 		version: ver,
 		time:    mytime.Now(),
 		rand:    randText(),
+	}
+}
+
+func EarliestID(kind string) *ID {
+	return &ID{
+		kind:    kind,
+		version: ver,
+		time:    time.Unix(0, 0),
+		rand:    strings.Repeat("0", randLen),
+	}
+}
+
+func LatestID(kind string) *ID {
+	return &ID{
+		kind:    kind,
+		version: ver,
+		time:    time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC),
+		rand:    strings.Repeat("z", randLen),
 	}
 }
 
