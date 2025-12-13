@@ -2,11 +2,9 @@ package method
 
 import (
 	"context"
-	"net/http"
 
 	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/resource"
-	"codeberg.org/socialmaps/api/internal/web"
+	"github.com/danielgtaylor/huma/v2"
 )
 
 type DeleteReview struct {
@@ -14,34 +12,20 @@ type DeleteReview struct {
 }
 
 type deleteReviewArgs struct {
-	ReviewID string `path:"review_id"`
+	ReviewID string `path:"review_id" pattern:"^rvw_[a-zA-Z0-9]+$"`
 }
 
-func (m *DeleteReview) Execute(ctx context.Context, args *deleteReviewArgs) *web.Response {
-	usr := web.GetAuthUser(ctx)
+func (m *DeleteReview) Execute(ctx context.Context, args *deleteReviewArgs) (*struct{}, error) {
+	usr := GetAuthUser(ctx)
 
 	rvw := model.LoadReview(ctx, m.DB, args.ReviewID)
 	if rvw == nil {
-		return web.NewResponse(http.StatusNotFound, nil)
+		return nil, huma.Error404NotFound("review not found")
 	} else if rvw.UserID != usr.ID {
 		// Users cannot delete others' reviews
-		return web.NewResponse(http.StatusForbidden, nil)
+		return nil, huma.Error403Forbidden("not your review")
 	}
 
 	model.DeleteReview(ctx, m.DB, args.ReviewID)
-	return web.NewResponse(http.StatusNoContent, nil)
-}
-
-func (m *DeleteReview) Validate(args *deleteReviewArgs) *web.Response {
-	if !model.IsValidReviewID(args.ReviewID) {
-		return web.NewJSONResponse(http.StatusBadRequest, resource.Error{
-			Message: resource.ErrMsgInvalidReviewID,
-		})
-	}
-
-	return nil
-}
-
-func (m *DeleteReview) NewArgs() *deleteReviewArgs {
-	return &deleteReviewArgs{}
+	return nil, nil
 }

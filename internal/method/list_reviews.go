@@ -2,12 +2,10 @@ package method
 
 import (
 	"context"
-	"net/http"
 
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
-	"codeberg.org/socialmaps/api/internal/web"
 )
 
 type ListReviews struct {
@@ -15,13 +13,13 @@ type ListReviews struct {
 }
 
 type listReviewsArgs struct {
-	PlaceID       string `path:"place_id"`
-	Limit         uint   `schema:"limit,default:10"`
-	StartingAfter string `schema:"starting_after"`
-	EndingBefore  string `schema:"ending_before"`
+	PlaceID       string `path:"place_id" pattern:"^plc_[a-zA-Z0-9]+$"`
+	Limit         uint   `query:"limit" minimum:"1" maximum:"100" default:"20"`
+	StartingAfter string `query:"starting_after"`
+	EndingBefore  string `query:"ending_before"`
 }
 
-func (m *ListReviews) Execute(ctx context.Context, args *listReviewsArgs) *web.Response {
+func (m *ListReviews) Execute(ctx context.Context, args *listReviewsArgs) (*Response[*resource.List[*resource.Review]], error) {
 	var rvwMs []*model.Review
 
 	if args.EndingBefore != "" {
@@ -39,35 +37,5 @@ func (m *ListReviews) Execute(ctx context.Context, args *listReviewsArgs) *web.R
 		)
 	}
 
-	return web.NewJSONResponse(http.StatusOK, render.Reviews(rvwMs))
-}
-
-func (m *ListReviews) Validate(args *listReviewsArgs) *web.Response {
-	if !model.IsValidPlaceID(args.PlaceID) {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgInvalidPlaceID,
-		})
-	}
-
-	if args.Limit > 100 {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgLimitTooBig,
-		})
-	} else if args.Limit == 0 {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgLimitZero,
-		})
-	}
-
-	if args.EndingBefore != "" && args.StartingAfter != "" {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgBeforeAfterBothPresent,
-		})
-	}
-
-	return nil
-}
-
-func (m *ListReviews) NewArgs() *listReviewsArgs {
-	return &listReviewsArgs{}
+	return &Response[*resource.List[*resource.Review]]{Body: render.Reviews(rvwMs)}, nil
 }

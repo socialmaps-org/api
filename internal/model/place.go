@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"database/sql"
-	"regexp"
 
 	"codeberg.org/socialmaps/api/internal/database"
 )
@@ -41,8 +40,6 @@ const placeColumns = `
 	, dec_n_dislikes
 	, dec_updated_at
 `
-
-var placeIDRegex = regexp.MustCompile(`^plc_[a-zA-Z0-9]+$`)
 
 func scanPlace(scn database.Scanner) *Place {
 	var plc Place
@@ -158,8 +155,4 @@ func LoadPlaceByID(ctx context.Context, db *sql.DB, id string) *Place {
 		sql.Named("id", id),
 	)
 	return scanPlace(row)
-}
-
-func IsValidPlaceID(s string) bool {
-	return placeIDRegex.MatchString(s)
 }

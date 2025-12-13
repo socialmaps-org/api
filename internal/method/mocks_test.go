@@ -48,9 +48,9 @@ func NewTestAuthenticator(t *testing.T, osmSubs ...string) *TestAuthenticator {
 	}
 }
 
-func (a *TestAuthenticator) Introspect(token, scope string) (*web.Authentication, error) {
+func (a *TestAuthenticator) Introspect(token string) (*web.Authentication, error) {
 	a.nIntrospectCalls++
-	return a.Authenticator.Introspect(token, scope)
+	return a.Authenticator.Introspect(token)
 }
 
 func NewTestServer(t *testing.T, authr web.Authenticator, db *sql.DB, overpassEndpoint string) *httptest.Server {

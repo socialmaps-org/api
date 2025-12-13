@@ -2,12 +2,11 @@ package method
 
 import (
 	"context"
-	"net/http"
 
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
-	"codeberg.org/socialmaps/api/internal/web"
+	"github.com/danielgtaylor/huma/v2"
 )
 
 type CreateReview struct {
@@ -15,36 +14,24 @@ type CreateReview struct {
 }
 
 type createReviewArgs struct {
-	PlaceID string `path:"place_id"`
-	Liked   bool   `json:"liked"`
-	Comment string `json:"comment"`
+	PlaceID string `path:"place_id" pattern:"^plc_[a-zA-Z0-9]+$"`
+	Body    struct {
+		Liked   bool   `json:"liked"`
+		Comment string `json:"comment"`
+	}
 }
 
-func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) *web.Response {
-	usr := web.GetAuthUser(ctx)
+func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) (*Response[*resource.Review], error) {
+	usr := GetAuthUser(ctx)
 
 	plc := model.LoadPlaceByID(ctx, m.DB, args.PlaceID)
 	if plc == nil {
-		return web.NewEmptyResponse(http.StatusNotFound)
+		return nil, huma.Error404NotFound("place not found")
 	}
 
-	rvwM := model.CreateReview(ctx, m.DB, args.PlaceID, usr.ID, args.Liked, args.Comment)
+	rvwM := model.CreateReview(ctx, m.DB, args.PlaceID, usr.ID, args.Body.Liked, args.Body.Comment)
 
 	rvwR := render.Review(rvwM)
 
-	return web.NewJSONResponse(http.StatusAccepted, rvwR)
-}
-
-func (m *CreateReview) Validate(args *createReviewArgs) *web.Response {
-	if !model.IsValidPlaceID(args.PlaceID) {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgInvalidPlaceID,
-		})
-	}
-
-	return nil
-}
-
-func (m *CreateReview) NewArgs() *createReviewArgs {
-	return &createReviewArgs{}
+	return &Response[*resource.Review]{Body: rvwR}, nil
 }

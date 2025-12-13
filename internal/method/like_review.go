@@ -2,11 +2,9 @@ package method
 
 import (
 	"context"
-	"net/http"
 
 	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/resource"
-	"codeberg.org/socialmaps/api/internal/web"
+	"github.com/danielgtaylor/huma/v2"
 )
 
 type LikeReview struct {
@@ -14,34 +12,20 @@ type LikeReview struct {
 }
 
 type likeReviewArgs struct {
-	ReviewID string `path:"review_id"`
+	ReviewID string `path:"review_id" pattern:"^rvw_[a-zA-Z0-9]+$"`
 }
 
-func (m *LikeReview) Execute(ctx context.Context, args *likeReviewArgs) *web.Response {
-	usr := web.GetAuthUser(ctx)
+func (m *LikeReview) Execute(ctx context.Context, args *likeReviewArgs) (*struct{}, error) {
+	usr := GetAuthUser(ctx)
 
 	rvw := model.LoadReview(ctx, m.DB, args.ReviewID)
 	if rvw == nil {
-		return web.NewResponse(http.StatusNotFound, nil)
+		return nil, huma.Error404NotFound("review not found")
 	} else if rvw.UserID == usr.ID {
 		// Users cannot like their own reviews
-		return web.NewResponse(http.StatusForbidden, nil)
+		return nil, huma.Error403Forbidden("cannot like yours")
 	}
 
 	model.LikeReview(ctx, m.DB, args.ReviewID, usr.ID)
-	return web.NewEmptyResponse(http.StatusNoContent)
-}
-
-func (m *LikeReview) Validate(args *likeReviewArgs) *web.Response {
-	if !model.IsValidReviewID(args.ReviewID) {
-		return web.NewJSONResponse(http.StatusBadRequest, resource.Error{
-			Message: resource.ErrMsgInvalidReviewID,
-		})
-	}
-
-	return nil
-}
-
-func (m *LikeReview) NewArgs() *likeReviewArgs {
-	return &likeReviewArgs{}
+	return nil, nil
 }

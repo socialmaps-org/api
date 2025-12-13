@@ -2,9 +2,9 @@ package method
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 
 	"codeberg.org/socialmaps/api/internal/fun"
 	"codeberg.org/socialmaps/api/internal/geo"
@@ -13,7 +13,6 @@ import (
 	"codeberg.org/socialmaps/api/internal/overpass"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
-	"codeberg.org/socialmaps/api/internal/web"
 )
 
 type LookupPlace struct {
@@ -22,12 +21,12 @@ type LookupPlace struct {
 }
 
 type lookupPlaceArgs struct {
-	Name string  `schema:"name,required"`
-	Lat  float64 `schema:"lat,required"`
-	Lon  float64 `schema:"lon,required"`
+	Name string  `query:"name" required:"true" maxLength:"256"`
+	Lat  float64 `query:"lat"  required:"true" minimum:"-180.0" maximum:"+180.0"`
+	Lon  float64 `query:"lon"  required:"true" minimum:"-90.0"  maximum:"+90.0"`
 }
 
-func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) *web.Response {
+func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Response[*resource.Place], error) {
 	bbox := geo.NewBBox(args.Lat, args.Lon, 10)
 	slog.InfoContext(ctx, "bbox",
 		"south", bbox.South, "west", bbox.West, "north", bbox.North, "east", bbox.East,
@@ -35,7 +34,7 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) *web.R
 
 	places, err := model.ListPlacesByCoord(ctx, m.DB, bbox.South, bbox.West, bbox.North, bbox.East)
 	if err != nil {
-		return web.NewEmptyResponse(http.StatusInternalServerError)
+		return nil, err
 	}
 
 	dbCandidates := fun.Filter(
@@ -46,10 +45,10 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) *web.R
 	)
 
 	if len(dbCandidates) > 1 {
-		return web.NewEmptyResponse(http.StatusInternalServerError)
+		return nil, errors.New("internal server error")
 	} else if len(dbCandidates) == 1 {
 		plcM := dbCandidates[0]
-		return web.NewJSONResponse(http.StatusOK, render.Place(plcM))
+		return &Response[*resource.Place]{Body: render.Place(plcM)}, nil
 	}
 
 	slog.InfoContext(ctx, "db results", "results", dbCandidates)
@@ -63,7 +62,7 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) *web.R
 		),
 	)
 	if err != nil {
-		return web.NewEmptyResponse(http.StatusInternalServerError)
+		return nil, err
 	}
 
 	opCandidates := fun.Filter(
@@ -74,42 +73,13 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) *web.R
 	)
 
 	if len(opCandidates) > 1 {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: "multiple elements with the same name exist",
-		})
+		return nil, errors.New("multiple elements with the same name exist")
 	} else if len(opCandidates) == 0 {
-		return web.NewEmptyResponse(http.StatusNotFound)
+		return nil, errors.New("not found")
 	}
 
 	el := opCandidates[0]
 	plcM := model.CreatePlace(ctx, m.DB, el.Tags["name"], el.Lat(), el.Lon(), el.Type, el.ID)
-	plcR := render.Place(plcM)
 
-	return web.NewJSONResponse(http.StatusOK, plcR)
-}
-
-func (m *LookupPlace) Validate(args *lookupPlaceArgs) *web.Response {
-	if !(len(args.Name) <= 256) {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgNameTooLong,
-		})
-	}
-
-	if !(-90 <= args.Lat && args.Lat <= +90) {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgLatOutOfRange,
-		})
-	}
-
-	if !(-180 <= args.Lon && args.Lon <= +180) {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgLonOutOfRange,
-		})
-	}
-
-	return nil
-}
-
-func (m *LookupPlace) NewArgs() *lookupPlaceArgs {
-	return &lookupPlaceArgs{}
+	return &Response[*resource.Place]{Body: render.Place(plcM)}, nil
 }

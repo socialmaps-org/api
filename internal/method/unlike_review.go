@@ -2,11 +2,9 @@ package method
 
 import (
 	"context"
-	"net/http"
 
 	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/resource"
-	"codeberg.org/socialmaps/api/internal/web"
+	"github.com/danielgtaylor/huma/v2"
 )
 
 type UnlikeReview struct {
@@ -14,32 +12,18 @@ type UnlikeReview struct {
 }
 
 type unlikeReviewArgs struct {
-	ReviewID string `path:"review_id"`
+	ReviewID string `path:"review_id" pattern:"^rvw_[a-zA-Z0-9]+$"`
 }
 
-func (m *UnlikeReview) Execute(ctx context.Context, args *unlikeReviewArgs) *web.Response {
-	usr := web.GetAuthUser(ctx)
+func (m *UnlikeReview) Execute(ctx context.Context, args *unlikeReviewArgs) (*struct{}, error) {
+	usr := GetAuthUser(ctx)
 
 	rvw := model.LoadReview(ctx, m.DB, args.ReviewID)
 	if rvw == nil {
-		return web.NewResponse(http.StatusNotFound, nil)
+		return nil, huma.Error404NotFound("review not found")
 	}
 
 	model.UnlikeReview(ctx, m.DB, args.ReviewID, usr.ID)
 
-	return web.NewEmptyResponse(http.StatusNoContent)
-}
-
-func (m *UnlikeReview) Validate(args *unlikeReviewArgs) *web.Response {
-	if !model.IsValidReviewID(args.ReviewID) {
-		return web.NewJSONResponse(http.StatusBadRequest, resource.Error{
-			Message: resource.ErrMsgInvalidReviewID,
-		})
-	}
-
-	return nil
-}
-
-func (m *UnlikeReview) NewArgs() *unlikeReviewArgs {
-	return &unlikeReviewArgs{}
+	return nil, nil
 }

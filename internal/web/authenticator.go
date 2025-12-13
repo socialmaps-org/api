@@ -19,7 +19,7 @@ type Authentication struct {
 }
 
 type Authenticator interface {
-	Introspect(token, scope string) (*Authentication, error)
+	Introspect(token string) (*Authentication, error)
 }
 
 type authenticator struct {
@@ -36,14 +36,14 @@ func NewAuthenticator(url, clientID, clientSecret string) Authenticator {
 	}
 }
 
-func (a *authenticator) Introspect(token, scope string) (*Authentication, error) {
+func (a *authenticator) Introspect(token string) (*Authentication, error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
 		a.url,
 		strings.NewReader(
 			url.Values{
-				"token":           []string{token},
-				"scope":           []string{scope},
+				"token": []string{token},
+				// "scope":           []string{scope},
 				"token_type_hint": []string{"access_token"},
 			}.Encode(),
 		),

@@ -2,12 +2,11 @@ package method
 
 import (
 	"context"
-	"net/http"
 
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
-	"codeberg.org/socialmaps/api/internal/web"
+	"github.com/danielgtaylor/huma/v2"
 )
 
 type RetrievePlace struct {
@@ -15,30 +14,16 @@ type RetrievePlace struct {
 }
 
 type retrievePlaceArgs struct {
-	PlaceID string `path:"place_id"`
+	PlaceID string `path:"place_id" pattern:"^plc_[a-zA-Z0-9]+$"`
 }
 
-func (m *RetrievePlace) Execute(ctx context.Context, args *retrievePlaceArgs) *web.Response {
+func (m *RetrievePlace) Execute(ctx context.Context, args *retrievePlaceArgs) (*Response[*resource.Place], error) {
 	plcM := model.LoadPlaceByID(ctx, m.DB, args.PlaceID)
 	if plcM == nil {
-		return web.NewEmptyResponse(http.StatusNotFound)
+		return nil, huma.Error404NotFound("place not found")
 	}
 
 	plcR := render.Place(plcM)
 
-	return web.NewJSONResponse(http.StatusOK, plcR)
-}
-
-func (m *RetrievePlace) Validate(args *retrievePlaceArgs) *web.Response {
-	if !model.IsValidPlaceID(args.PlaceID) {
-		return web.NewJSONResponse(http.StatusBadRequest, &resource.Error{
-			Message: resource.ErrMsgInvalidPlaceID,
-		})
-	}
-
-	return nil
-}
-
-func (m *RetrievePlace) NewArgs() *retrievePlaceArgs {
-	return &retrievePlaceArgs{}
+	return &Response[*resource.Place]{Body: plcR}, nil
 }
