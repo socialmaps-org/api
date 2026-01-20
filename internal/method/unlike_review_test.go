@@ -1,6 +1,7 @@
 package method
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"testing"
@@ -9,24 +10,25 @@ import (
 
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/must"
 )
 
 func TestUnlikeReviewAuthorizationMissing(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
-	usrA := model.UpsertUser(ctx, db, "1", "Alice")
-	usrB := model.UpsertUser(ctx, db, "2", "Bob")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
-	rvw := model.CreateReview(ctx, db, plc.ID, usrA.ID, true, "I like it!")
-	model.LikeReview(ctx, db, rvw.ID, usrB.ID)
+	qs := model.New(database.Open(":memory:"))
+	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
-	req, err := http.NewRequest("PUT", srv.URL+"/v1/reviews/"+rvw.ID+"/unlike", nil)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
 	require.NoError(t, err)
 
 	res, err := http.DefaultClient.Do(req)
@@ -37,26 +39,26 @@ func TestUnlikeReviewAuthorizationMissing(t *testing.T) {
 
 	require.Equal(t, http.StatusUnauthorized, res.StatusCode)
 
-	rvw = model.LoadReview(ctx, db, rvw.ID)
-	require.Equal(t, uint64(1), rvw.NLikes)
+	rvw = must.Get(qs.LoadReview(ctx, rvw.ID))
+	require.Equal(t, int64(1), rvw.NLikes)
 }
 
 func TestUnlikeReviewAuthorizationInactive(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
-	usrA := model.UpsertUser(ctx, db, "1", "Alice")
-	usrB := model.UpsertUser(ctx, db, "2", "Bob")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
-	rvw := model.CreateReview(ctx, db, plc.ID, usrA.ID, true, "I like it!")
-	model.LikeReview(ctx, db, rvw.ID, usrB.ID)
+	qs := model.New(database.Open(":memory:"))
+	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
-	req, err := http.NewRequest("PUT", srv.URL+"/v1/reviews/"+rvw.ID+"/unlike", nil)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer my-auth-token")
 
@@ -68,27 +70,27 @@ func TestUnlikeReviewAuthorizationInactive(t *testing.T) {
 
 	require.Equal(t, http.StatusUnauthorized, res.StatusCode)
 
-	rvw = model.LoadReview(ctx, db, rvw.ID)
-	require.Equal(t, uint64(1), rvw.NLikes)
+	rvw = must.Get(qs.LoadReview(ctx, rvw.ID))
+	require.Equal(t, int64(1), rvw.NLikes)
 }
 
 func TestUnlikeReviewOthers(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
-	usrA := model.UpsertUser(ctx, db, "1", "Alice")
-	usrB := model.UpsertUser(ctx, db, "2", "Bob")
-	usrC := model.UpsertUser(ctx, db, "3", "Charlie")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
-	rvw := model.CreateReview(ctx, db, plc.ID, usrA.ID, true, "I like it!")
-	model.LikeReview(ctx, db, rvw.ID, usrB.ID)
+	qs := model.New(database.Open(":memory:"))
+	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
+	usrC := must.Get(qs.CreateUser(ctx, 3, "Charlie"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
 
-	authr := NewTestAuthenticator(t, fmt.Sprint(usrC.OSMID))
-	srv := NewTestServer(t, authr, db, "")
+	authr := NewTestAuthenticator(t, fmt.Sprint(usrC.ID))
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
-	req, err := http.NewRequest("PUT", srv.URL+"/v1/reviews/"+rvw.ID+"/unlike", nil)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer my-auth-token")
 
@@ -100,26 +102,26 @@ func TestUnlikeReviewOthers(t *testing.T) {
 
 	require.Equal(t, http.StatusNoContent, res.StatusCode)
 
-	rvw = model.LoadReview(ctx, db, rvw.ID)
-	require.Equal(t, uint64(1), rvw.NLikes)
+	rvw = must.Get(qs.LoadReview(ctx, rvw.ID))
+	require.Equal(t, int64(1), rvw.NLikes)
 }
 
 func TestUnlikeReview(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
-	usrA := model.UpsertUser(ctx, db, "1", "Alice")
-	usrB := model.UpsertUser(ctx, db, "2", "Bob")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
-	rvw := model.CreateReview(ctx, db, plc.ID, usrA.ID, true, "I like it!")
-	model.LikeReview(ctx, db, rvw.ID, usrB.ID)
+	qs := model.New(database.Open(":memory:"))
+	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
 
-	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.OSMID))
-	srv := NewTestServer(t, authr, db, "")
+	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID))
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
-	req, err := http.NewRequest("PUT", srv.URL+"/v1/reviews/"+rvw.ID+"/unlike", nil)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer my-auth-token")
 
@@ -131,7 +133,7 @@ func TestUnlikeReview(t *testing.T) {
 
 	require.Equal(t, http.StatusNoContent, res.StatusCode)
 
-	rvw = model.LoadReview(ctx, db, rvw.ID)
+	rvw = must.Get(qs.LoadReview(ctx, rvw.ID))
 	require.Zero(t, rvw.NLikes)
 }
 
@@ -139,18 +141,18 @@ func TestUnlikeReviewIdempotent(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
-	usrA := model.UpsertUser(ctx, db, "1", "Alice")
-	usrB := model.UpsertUser(ctx, db, "2", "Bob")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
-	rvw := model.CreateReview(ctx, db, plc.ID, usrA.ID, true, "I like it!")
-	model.LikeReview(ctx, db, rvw.ID, usrB.ID)
+	qs := model.New(database.Open(":memory:"))
+	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
 
-	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.OSMID), fmt.Sprint(usrB.OSMID))
-	srv := NewTestServer(t, authr, db, "")
+	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID), fmt.Sprint(usrB.ID))
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act (#1)
-	req, err := http.NewRequest("PUT", srv.URL+"/v1/reviews/"+rvw.ID+"/unlike", nil)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer my-auth-token")
 
@@ -162,11 +164,11 @@ func TestUnlikeReviewIdempotent(t *testing.T) {
 
 	require.Equal(t, http.StatusNoContent, res.StatusCode)
 
-	rvw = model.LoadReview(ctx, db, rvw.ID)
+	rvw = must.Get(qs.LoadReview(ctx, rvw.ID))
 	require.Zero(t, rvw.NLikes)
 
 	// Act (#2)
-	req, err = http.NewRequest("PUT", srv.URL+"/v1/reviews/"+rvw.ID+"/unlike", nil)
+	req, err = http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer my-auth-token")
 
@@ -178,6 +180,6 @@ func TestUnlikeReviewIdempotent(t *testing.T) {
 
 	require.Equal(t, http.StatusNoContent, res.StatusCode)
 
-	rvw = model.LoadReview(ctx, db, rvw.ID)
+	rvw = must.Get(qs.LoadReview(ctx, rvw.ID))
 	require.Zero(t, rvw.NLikes)
 }

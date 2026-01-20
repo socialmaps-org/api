@@ -2,8 +2,8 @@ package method
 
 import (
 	"context"
+	"database/sql"
 
-	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/danielgtaylor/huma/v2"
@@ -14,24 +14,30 @@ type CreateReview struct {
 }
 
 type createReviewArgs struct {
-	PlaceID string `path:"place_id" pattern:"^plc_[a-zA-Z0-9]+$"`
+	PlaceID int64 `path:"place_id" minimum:"0"`
 	Body    struct {
 		Liked   bool   `json:"liked"`
 		Comment string `json:"comment"`
 	}
 }
 
-func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) (*Response[*resource.Review], error) {
+func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) (*Response[resource.Review], error) {
 	usr := GetAuthUser(ctx)
 
-	plc := model.LoadPlaceByID(ctx, m.DB, args.PlaceID)
-	if plc == nil {
-		return nil, huma.Error404NotFound("place not found")
+	plc, err := m.QS.LoadPlace(ctx, args.PlaceID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, huma.Error404NotFound("place not found")
+		}
+		return nil, err
 	}
 
-	rvwM := model.CreateReview(ctx, m.DB, args.PlaceID, usr.ID, args.Body.Liked, args.Body.Comment)
+	rvwM, err := m.QS.CreateReview(ctx, plc.ID, usr.ID, args.Body.Liked, sql.NullString{String: args.Body.Comment, Valid: true})
+	if err != nil {
+		return nil, err
+	}
 
 	rvwR := render.Review(rvwM)
 
-	return &Response[*resource.Review]{Body: rvwR}, nil
+	return &Response[resource.Review]{Body: rvwR}, nil
 }

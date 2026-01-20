@@ -1,6 +1,7 @@
 package moderation
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/mistral"
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/must"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,9 +65,10 @@ func TestConsume(t *testing.T) {
 	ctx := t.Context()
 
 	db := database.Open(":memory:")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
-	usr := model.UpsertUser(ctx, db, "1", "Steve")
-	rvw := model.CreateReview(ctx, db, plc.ID, usr.ID, true, "great little cafe!")
+	qs := model.New(db)
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, sql.NullString{String: "great little cafe!", Valid: true}))
 
 	mod := &MistralLarge2512v1{
 		Client: mistral.Client{
@@ -73,14 +76,14 @@ func TestConsume(t *testing.T) {
 			SecretToken: "my-bearer-token",
 		},
 	}
-	ch := make(chan *model.Review, 1)
+	ch := make(chan model.Review, 1)
 	ch <- rvw
 
 	// Act
-	consume(ctx, db, mod, ch)
+	consume(ctx, qs, mod, ch)
 
 	// Assert
-	dec := model.LoadLatestDecisionOfReview(ctx, db, rvw.ID)
+	dec := must.Get(qs.LoadLatestDecisionOfReview(ctx, rvw.ID))
 	require.NotNil(t, dec)
 	require.Equal(t, rvw.ID, dec.ReviewID)
 	require.Equal(t, true, dec.Approved)

@@ -5,7 +5,7 @@ import (
 	"codeberg.org/socialmaps/api/internal/resource"
 )
 
-func Place(m *model.Place) *resource.Place {
+func Place(m model.Place) resource.Place {
 	count := m.NLikes + m.NDislikes
 	var likeRatio *float64
 	if count != 0 {
@@ -14,7 +14,7 @@ func Place(m *model.Place) *resource.Place {
 	}
 	score := (m.DecNLikes + 1.0) / ((m.DecNLikes + 1.0) + (m.DecNDislikes + 1.0))
 
-	return &resource.Place{
+	return resource.Place{
 		Object: "place",
 		ID:     m.ID,
 		Name:   m.Name,

@@ -2,10 +2,10 @@ package method
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"time"
 
-	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/danielgtaylor/huma/v2"
@@ -16,22 +16,25 @@ type UpdateReview struct {
 }
 
 type updateReviewArgs struct {
-	ReviewID string `path:"review_id" pattern:"^rvw_[a-zA-Z0-9]+$"`
+	ReviewID int64 `path:"review_id" minimum:"0"`
 	Body     struct {
-		Liked   bool   `json:"liked"`
-		Comment string `json:"comment"`
+		Liked   bool    `json:"liked"`
+		Comment *string `json:"comment"`
 	}
 }
 
 // 1 hour
 const maxDelayInSec = 1 * 60 * 60
 
-func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Response[*resource.Review], error) {
+func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Response[resource.Review], error) {
 	usr := GetAuthUser(ctx)
 
-	rvwM := model.LoadReview(ctx, m.DB, args.ReviewID)
-	if rvwM == nil {
-		return nil, huma.Error404NotFound("review not found")
+	rvwM, err := m.QS.LoadReview(ctx, args.ReviewID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, huma.Error404NotFound("review not found")
+		}
+		return nil, err
 	}
 
 	if rvwM.UserID != usr.ID {
@@ -43,9 +46,19 @@ func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Re
 		return nil, huma.Error400BadRequest("too late")
 	}
 
-	rvwM = model.UpdateReview(ctx, m.DB, args.ReviewID, args.Body.Liked, args.Body.Comment)
+	var comment sql.NullString
+	if args.Body.Comment != nil {
+		comment = sql.NullString{String: *args.Body.Comment, Valid: true}
+	} else {
+		comment = sql.NullString{Valid: false}
+	}
+
+	rvwM, err = m.QS.UpdateReview(ctx, args.Body.Liked, comment, rvwM.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	rvwR := render.Review(rvwM)
 
-	return &Response[*resource.Review]{Body: rvwR}, nil
+	return &Response[resource.Review]{Body: rvwR}, nil
 }

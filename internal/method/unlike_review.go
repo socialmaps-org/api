@@ -2,8 +2,8 @@ package method
 
 import (
 	"context"
+	"database/sql"
 
-	"codeberg.org/socialmaps/api/internal/model"
 	"github.com/danielgtaylor/huma/v2"
 )
 
@@ -12,18 +12,24 @@ type UnlikeReview struct {
 }
 
 type unlikeReviewArgs struct {
-	ReviewID string `path:"review_id" pattern:"^rvw_[a-zA-Z0-9]+$"`
+	ReviewID int64 `path:"review_id" minimum:"0"`
 }
 
 func (m *UnlikeReview) Execute(ctx context.Context, args *unlikeReviewArgs) (*struct{}, error) {
 	usr := GetAuthUser(ctx)
 
-	rvw := model.LoadReview(ctx, m.DB, args.ReviewID)
-	if rvw == nil {
-		return nil, huma.Error404NotFound("review not found")
+	rvw, err := m.QS.LoadReview(ctx, args.ReviewID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, huma.Error404NotFound("review not found")
+		}
+		return nil, err
 	}
 
-	model.UnlikeReview(ctx, m.DB, args.ReviewID, usr.ID)
+	err = m.QS.UnlikeReview(ctx, rvw.ID, usr.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }

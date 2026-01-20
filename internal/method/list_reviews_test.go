@@ -1,7 +1,9 @@
 package method
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
@@ -12,6 +14,7 @@ import (
 
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/must"
 	"codeberg.org/socialmaps/api/internal/mytime"
 	"codeberg.org/socialmaps/api/internal/resource"
 )
@@ -23,21 +26,21 @@ func TestListReviews(t *testing.T) {
 	mockClock := clock.NewMock()
 	mytime.SetClock(mockClock)
 
-	db := database.Open(":memory:")
-	usrA := model.UpsertUser(ctx, db, "1", "Alice")
-	usrB := model.UpsertUser(ctx, db, "2", "Bob")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
-	rvwA := model.CreateReview(ctx, db, plc.ID, usrA.ID, true, "I like it!")
-	model.CreateReviewDecision(ctx, db, rvwA.ID, "test-mod", true, "")
+	qs := model.New(database.Open(":memory:"))
+	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	rvwA := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: true}))
+	must.Get(qs.CreateReviewDecision(ctx, rvwA.ID, "test-mod", true, ""))
 	mockClock.Add(24 * time.Hour)
-	rvwB := model.CreateReview(ctx, db, plc.ID, usrB.ID, false, "I don't like it!")
-	model.CreateReviewDecision(ctx, db, rvwB.ID, "test-mod", true, "")
+	rvwB := must.Get(qs.CreateReview(ctx, plc.ID, usrB.ID, false, sql.NullString{String: "I don't like it!", Valid: true}))
+	must.Get(qs.CreateReviewDecision(ctx, rvwB.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act (#1)
-	req, err := http.NewRequest("GET", srv.URL+"/v1/places/"+plc.ID+"/reviews", nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID), nil)
 	require.NoError(t, err)
 	req.URL.RawQuery = url.Values{
 		"limit": {"1"},
@@ -49,18 +52,19 @@ func TestListReviews(t *testing.T) {
 	// Assert (#1)
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	list := resource.List[*model.Review]{}
+	list := resource.List[resource.Review]{}
 	err = json.NewDecoder(res.Body).Decode(&list)
 	require.NoError(t, err)
 	require.Len(t, list.Data, 1)
 	require.Equal(t, rvwB.ID, list.Data[0].ID)
 
 	// Act (#2) [Next]
-	req, err = http.NewRequest("GET", srv.URL+"/v1/places/"+plc.ID+"/reviews", nil)
+	req, err = http.NewRequest("GET", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID), nil)
 	require.NoError(t, err)
 	req.URL.RawQuery = url.Values{
-		"limit":          {"1"},
-		"starting_after": {*list.StartingAfter},
+		"limit":        {"1"},
+		"last_id":      {fmt.Sprint(list.Data[0].ID)},
+		"last_created": {fmt.Sprint(list.Data[0].Created)},
 	}.Encode()
 
 	res, err = http.DefaultClient.Do(req)
@@ -69,18 +73,19 @@ func TestListReviews(t *testing.T) {
 	// Assert (#2) [Next]
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	list = resource.List[*model.Review]{}
+	list = resource.List[resource.Review]{}
 	err = json.NewDecoder(res.Body).Decode(&list)
 	require.NoError(t, err)
 	require.Len(t, list.Data, 1)
 	require.Equal(t, rvwA.ID, list.Data[0].ID)
 
 	// Act (#3) [Previous]
-	req, err = http.NewRequest("GET", srv.URL+"/v1/places/"+plc.ID+"/reviews", nil)
+	req, err = http.NewRequest("GET", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID), nil)
 	require.NoError(t, err)
 	req.URL.RawQuery = url.Values{
 		"limit":         {"1"},
-		"ending_before": {*list.EndingBefore},
+		"first_id":      {fmt.Sprint(list.Data[0].ID)},
+		"first_created": {fmt.Sprint(list.Data[0].Created)},
 	}.Encode()
 
 	res, err = http.DefaultClient.Do(req)
@@ -89,7 +94,7 @@ func TestListReviews(t *testing.T) {
 	// Assert (#3) [Previous]
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	list = resource.List[*model.Review]{}
+	list = resource.List[resource.Review]{}
 	err = json.NewDecoder(res.Body).Decode(&list)
 	require.NoError(t, err)
 	require.Len(t, list.Data, 1)

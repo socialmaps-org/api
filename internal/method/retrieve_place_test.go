@@ -2,6 +2,7 @@ package method
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/must"
 	"codeberg.org/socialmaps/api/internal/resource"
 )
 
@@ -16,14 +18,14 @@ func TestRetrieveExisting(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
-	plcM := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
+	qs := model.New(database.Open(":memory:"))
+	plcM := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
-	res, err := http.Get(srv.URL + "/v1/places/" + plcM.ID)
+	res, err := http.Get(fmt.Sprintf("%s/v1/places/%d", srv.URL, plcM.ID))
 	require.NoError(t, err)
 
 	// Assert
@@ -40,13 +42,13 @@ func TestRetrieveExisting(t *testing.T) {
 
 func TestRetrieveMissing(t *testing.T) {
 	// Arrange
-	db := database.Open(":memory:")
+	qs := model.New(database.Open(":memory:"))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
-	res, err := http.Get(srv.URL + "/v1/places/plc_missing")
+	res, err := http.Get(srv.URL + "/v1/places/42")
 	require.NoError(t, err)
 
 	// Assert

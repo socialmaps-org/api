@@ -28,24 +28,25 @@ steps:
       - ./scripts/lint.sh
     depends_on: [check-scripts]
 
+  - name: lint-sql
+    image: sqlfluff/sqlfluff:3.5.0
+    commands:
+      - ./scripts/lint-sql.sh
+    depends_on: [check-scripts]
+
   - name: test
     image: golang:1.25.4-trixie
     commands:
-      - ./scripts/test.sh
-    depends_on: [check-scripts]
-
-  - name: make
-    image: golang:1.25.4-trixie
-    commands:
       - make
-    depends_on: [check-format, check-deadcode, lint, test]
+      - ./scripts/test.sh
+    depends_on: [check-scripts, check-format, check-deadcode, lint, lint-sql]
 
   - name: publish-dryrun
     image: 'woodpeckerci/plugin-docker-buildx:6.0.3'
     settings:
       platforms: linux/amd64
       dry-run: true
-    depends_on: [make]
+    depends_on: [test]
     when:
       - event: [pull_request, manual]
 
@@ -61,7 +62,7 @@ steps:
             from_secret: cb_username
           password:
             from_secret: cb_password
-    depends_on: [make]
+    depends_on: [test]
     when:
       - event: [push, manual]
         branch: main

@@ -2,6 +2,7 @@ package method
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -10,6 +11,7 @@ import (
 
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/must"
 	"codeberg.org/socialmaps/api/internal/resource"
 )
 
@@ -17,15 +19,15 @@ func TestCreateReviewAuthorizationMissing(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
+	qs := model.New(database.Open(":memory:"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
 	req, err := http.NewRequest(
-		"POST", srv.URL+"/v1/places/"+plc.ID+"/reviews",
+		"POST", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID),
 		strings.NewReader(`{"liked": true, "comments": "I liked it!"}`),
 	)
 	require.NoError(t, err)
@@ -41,14 +43,14 @@ func TestCreateReviewAuthorizationMissing(t *testing.T) {
 
 func TestCreateReviewMissingPlace(t *testing.T) {
 	// Arrange
-	db := database.Open(":memory:")
+	qs := model.New(database.Open(":memory:"))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
 	req, err := http.NewRequest(
-		"POST", srv.URL+"/v1/places/plc_missing/reviews",
+		"POST", srv.URL+"/v1/places/42/reviews",
 		strings.NewReader(`{"liked": true, "comment": "I liked it!"}`),
 	)
 	require.NoError(t, err)
@@ -68,15 +70,15 @@ func TestCreateReview(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
-	plc := model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
+	qs := model.New(database.Open(":memory:"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
 	req, err := http.NewRequest(
-		"POST", srv.URL+"/v1/places/"+plc.ID+"/reviews",
+		"POST", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID),
 		strings.NewReader(`{"liked": true, "comment": "I liked it!"}`),
 	)
 	require.NoError(t, err)
@@ -98,8 +100,8 @@ func TestCreateReview(t *testing.T) {
 	require.True(t, rvwR.Liked)
 	require.Equal(t, "I liked it!", rvwR.Comment)
 
-	rvwM := model.LoadReview(ctx, db, rvwR.ID)
+	rvwM := must.Get(qs.LoadReview(ctx, rvwR.ID))
 	require.NotNil(t, rvwM)
 	require.True(t, rvwM.Liked)
-	require.Equal(t, "I liked it!", rvwM.Comment)
+	require.Equal(t, "I liked it!", rvwM.Comment.String)
 }

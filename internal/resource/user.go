@@ -1,5 +1,5 @@
 package resource
 
 type User struct {
-	ID string `json:"id"`
+	ID int64 `json:"id"`
 }

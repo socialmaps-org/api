@@ -4,7 +4,7 @@ import "time"
 
 type Element struct {
 	Type   string
-	ID     uint64
+	ID     int64
 	Center *struct {
 		Lat float64
 		Lon float64

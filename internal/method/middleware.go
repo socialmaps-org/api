@@ -1,10 +1,10 @@
 package method
 
 import (
-	"database/sql"
 	"log/slog"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/web"
@@ -14,7 +14,7 @@ import (
 func GetAuthMiddleware(
 	api huma.API,
 	authr web.Authenticator,
-	db *sql.DB,
+	qs *model.Queries,
 ) func(ctx huma.Context, next func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		re := regexp.MustCompile(`^Bearer\s+(?P<token>[a-zA-Z0-9._~+/=-]+)$`)
@@ -62,7 +62,25 @@ func GetAuthMiddleware(
 			return
 		}
 
-		usr := model.UpsertUser(ctx.Context(), db, authn.OpenStreetMapSub, authn.Username)
+		osmID, err := strconv.ParseInt(authn.OpenStreetMapSub, 10, 64)
+		if err != nil {
+			slog.Info("CANONICAL-AUTH-LINE",
+				"status", "error",
+				"error", err.Error(),
+			)
+			huma.WriteErr(api, ctx, http.StatusInternalServerError, "Internal Server Error")
+			return
+		}
+
+		usr, err := qs.CreateUser(ctx.Context(), osmID, authn.Username)
+		if err != nil {
+			slog.Info("CANONICAL-AUTH-LINE",
+				"status", "error",
+				"error", err.Error(),
+			)
+			huma.WriteErr(api, ctx, http.StatusInternalServerError, "Internal Server Error")
+			return
+		}
 
 		next(huma.WithValue(ctx, "auth.user", usr))
 	}

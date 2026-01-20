@@ -2,8 +2,8 @@ package method
 
 import (
 	"context"
+	"database/sql"
 
-	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/danielgtaylor/huma/v2"
@@ -14,16 +14,19 @@ type RetrievePlace struct {
 }
 
 type retrievePlaceArgs struct {
-	PlaceID string `path:"place_id" pattern:"^plc_[a-zA-Z0-9]+$"`
+	PlaceID int64 `path:"place_id" minimum:"0"`
 }
 
-func (m *RetrievePlace) Execute(ctx context.Context, args *retrievePlaceArgs) (*Response[*resource.Place], error) {
-	plcM := model.LoadPlaceByID(ctx, m.DB, args.PlaceID)
-	if plcM == nil {
-		return nil, huma.Error404NotFound("place not found")
+func (m *RetrievePlace) Execute(ctx context.Context, args *retrievePlaceArgs) (*Response[resource.Place], error) {
+	plcM, err := m.QS.LoadPlace(ctx, args.PlaceID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, huma.Error404NotFound("place not found")
+		}
+		return nil, err
 	}
 
 	plcR := render.Place(plcM)
 
-	return &Response[*resource.Place]{Body: plcR}, nil
+	return &Response[resource.Place]{Body: plcR}, nil
 }

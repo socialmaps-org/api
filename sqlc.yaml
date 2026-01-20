@@ -1,0 +1,13 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "internal/model/queries.sql"
+    schema: "internal/database/migrations/"
+    gen:
+      go:
+        out: "internal/model"
+        # This is to avoid generating `*Params` structs for query args, which
+        # I find error-prone as it's fairly easy to forget initialising some
+        # struct fields and inadvertently use zero-values for them instead. In
+        # contrast, one cannot forget to provide function arguments.
+        query_parameter_limit: 1000

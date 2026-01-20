@@ -1,12 +1,12 @@
 package method
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 
+	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/web"
 )
 
@@ -17,8 +17,8 @@ type GreetingOutput struct {
 	}
 }
 
-func Mux(authr web.Authenticator, db *sql.DB, overpassEndpoint string) *http.ServeMux {
-	c := Common{DB: db}
+func Mux(authr web.Authenticator, qs *model.Queries, overpassEndpoint string) *http.ServeMux {
+	c := Common{QS: qs}
 
 	mux := http.NewServeMux()
 
@@ -80,7 +80,7 @@ func Mux(authr web.Authenticator, db *sql.DB, overpassEndpoint string) *http.Ser
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusAccepted,
 		Middlewares: huma.Middlewares{
-			GetAuthMiddleware(api, authr, db),
+			GetAuthMiddleware(api, authr, qs),
 		},
 		Security: []map[string][]string{
 			{"oauth2": {"reviews:write"}},
@@ -97,7 +97,7 @@ func Mux(authr web.Authenticator, db *sql.DB, overpassEndpoint string) *http.Ser
 		Description: "desc",
 		Tags:        []string{"Reviews"},
 		Middlewares: huma.Middlewares{
-			GetAuthMiddleware(api, authr, db),
+			GetAuthMiddleware(api, authr, qs),
 		},
 		Security: []map[string][]string{
 			{"oauth2": {"reviews:write"}},
@@ -115,7 +115,7 @@ func Mux(authr web.Authenticator, db *sql.DB, overpassEndpoint string) *http.Ser
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusNoContent,
 		Middlewares: huma.Middlewares{
-			GetAuthMiddleware(api, authr, db),
+			GetAuthMiddleware(api, authr, qs),
 		},
 		Security: []map[string][]string{
 			{"oauth2": {"reviews:write"}},
@@ -133,7 +133,7 @@ func Mux(authr web.Authenticator, db *sql.DB, overpassEndpoint string) *http.Ser
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusNoContent,
 		Middlewares: huma.Middlewares{
-			GetAuthMiddleware(api, authr, db),
+			GetAuthMiddleware(api, authr, qs),
 		},
 		Security: []map[string][]string{
 			{"oauth2": {"reviews:write"}},
@@ -151,7 +151,7 @@ func Mux(authr web.Authenticator, db *sql.DB, overpassEndpoint string) *http.Ser
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusNoContent,
 		Middlewares: huma.Middlewares{
-			GetAuthMiddleware(api, authr, db),
+			GetAuthMiddleware(api, authr, qs),
 		},
 		Security: []map[string][]string{
 			{"oauth2": {"reviews:write"}},

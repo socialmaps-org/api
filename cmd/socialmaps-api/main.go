@@ -10,6 +10,7 @@ import (
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/method"
 	"codeberg.org/socialmaps/api/internal/mistral"
+	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/moderation"
 	"codeberg.org/socialmaps/api/internal/web"
 )
@@ -31,11 +32,12 @@ func main() {
 
 	db := database.Open(envvars.DatabaseDSN)
 	defer db.Close()
+	qs := model.New(db)
 
 	// Start the background jobs
 	ctx := context.Background()
 	mod := moderation.NewMistralLarge2512v1(mistral.NewClient(envvars.MistralSecret))
-	go moderation.Process(ctx, db, mod)
+	go moderation.Process(ctx, qs, mod)
 
 	// Run the API server
 	authr := web.NewAuthenticator(
@@ -44,7 +46,7 @@ func main() {
 		envvars.OAuth2ClientSecret,
 	)
 
-	mux := method.Mux(authr, db, envvars.OverpassEndpoint)
+	mux := method.Mux(authr, qs, envvars.OverpassEndpoint)
 
 	slog.Info("LISTENING", "listen_addr", envvars.ListenAddr)
 	err = http.ListenAndServe(envvars.ListenAddr, mux)

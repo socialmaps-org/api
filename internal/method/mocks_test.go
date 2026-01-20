@@ -1,12 +1,12 @@
 package method
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/web"
 	"github.com/stretchr/testify/require"
 )
@@ -53,8 +53,8 @@ func (a *TestAuthenticator) Introspect(token string) (*web.Authentication, error
 	return a.Authenticator.Introspect(token)
 }
 
-func NewTestServer(t *testing.T, authr web.Authenticator, db *sql.DB, overpassEndpoint string) *httptest.Server {
-	handler := Mux(authr, db, overpassEndpoint)
+func NewTestServer(t *testing.T, authr web.Authenticator, qs *model.Queries, overpassEndpoint string) *httptest.Server {
+	handler := Mux(authr, qs, overpassEndpoint)
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 

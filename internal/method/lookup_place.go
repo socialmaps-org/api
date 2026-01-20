@@ -2,6 +2,7 @@ package method
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -26,20 +27,20 @@ type lookupPlaceArgs struct {
 	Lon  float64 `query:"lon"  required:"true" minimum:"-90.0"  maximum:"+90.0"`
 }
 
-func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Response[*resource.Place], error) {
+func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Response[resource.Place], error) {
 	bbox := geo.NewBBox(args.Lat, args.Lon, 10)
 	slog.InfoContext(ctx, "bbox",
 		"south", bbox.South, "west", bbox.West, "north", bbox.North, "east", bbox.East,
 	)
 
-	places, err := model.ListPlacesByCoord(ctx, m.DB, bbox.South, bbox.West, bbox.North, bbox.East)
-	if err != nil {
+	places, err := m.QS.ListPlacesByCoord(ctx, bbox.South, bbox.North, bbox.West, bbox.East)
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
 	dbCandidates := fun.Filter(
 		places,
-		func(plc *model.Place) bool {
+		func(plc model.Place) bool {
 			return name.Equivalent(args.Name, plc.Name)
 		},
 	)
@@ -48,7 +49,7 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 		return nil, errors.New("internal server error")
 	} else if len(dbCandidates) == 1 {
 		plcM := dbCandidates[0]
-		return &Response[*resource.Place]{Body: render.Place(plcM)}, nil
+		return &Response[resource.Place]{Body: render.Place(plcM)}, nil
 	}
 
 	slog.InfoContext(ctx, "db results", "results", dbCandidates)
@@ -79,7 +80,10 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 	}
 
 	el := opCandidates[0]
-	plcM := model.CreatePlace(ctx, m.DB, el.Tags["name"], el.Lat(), el.Lon(), el.Type, el.ID)
+	plcM, err := m.QS.CreatePlace(ctx, el.Tags["name"], el.Lat(), el.Lon(), el.Type, el.ID)
+	if err != nil {
+		return nil, err
+	}
 
-	return &Response[*resource.Place]{Body: render.Place(plcM)}, nil
+	return &Response[resource.Place]{Body: render.Place(plcM)}, nil
 }

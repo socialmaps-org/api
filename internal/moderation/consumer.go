@@ -2,22 +2,25 @@ package moderation
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 
 	"codeberg.org/socialmaps/api/internal/model"
 )
 
-func Consumer(ctx context.Context, db *sql.DB, mod Moderator, ch <-chan *model.Review) {
+func Consumer(ctx context.Context, qs *model.Queries, mod Moderator, ch <-chan model.Review) {
 	for {
-		consume(ctx, db, mod, ch)
+		consume(ctx, qs, mod, ch)
 	}
 }
 
-func consume(ctx context.Context, db *sql.DB, mod Moderator, ch <-chan *model.Review) {
+func consume(ctx context.Context, qs *model.Queries, mod Moderator, ch <-chan model.Review) {
 	rvw := <-ch
 
-	dec, err := mod.Moderate(rvw.Comment)
+	if !rvw.Comment.Valid {
+		return
+	}
+
+	dec, err := mod.Moderate(rvw.Comment.String)
 	if err != nil {
 		slog.ErrorContext(ctx, "CANONICAL-MODERATION-CONSUMER-LINE",
 			"review", rvw.ID,
@@ -26,7 +29,15 @@ func consume(ctx context.Context, db *sql.DB, mod Moderator, ch <-chan *model.Re
 		)
 	}
 
-	decM := model.CreateReviewDecision(ctx, db, rvw.ID, mod.ID(), dec.Approved, dec.Details)
+	decM, err := qs.CreateReviewDecision(ctx, rvw.ID, mod.ID(), dec.Approved, dec.Details)
+	if err != nil {
+		slog.ErrorContext(ctx, "CANONICAL-MODERATION-CONSUMER-LINE",
+			"review", rvw.ID,
+			"status", "error",
+			"error", err.Error(),
+		)
+		return
+	}
 
 	slog.InfoContext(ctx, "CANONICAL-MODERATION-CONSUMER-LINE",
 		"review", rvw.ID,

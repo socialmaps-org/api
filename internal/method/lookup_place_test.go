@@ -11,6 +11,7 @@ import (
 
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/must"
 	"codeberg.org/socialmaps/api/internal/resource"
 )
 
@@ -53,7 +54,7 @@ func TestLookupNew(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
+	qs := model.New(database.Open(":memory:"))
 
 	overpassSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/api/interpreter", r.URL.Path)
@@ -69,7 +70,7 @@ func TestLookupNew(t *testing.T) {
 	defer overpassSrv.Close()
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, db, overpassSrv.URL+"/api/interpreter")
+	srv := NewTestServer(t, authr, qs, overpassSrv.URL+"/api/interpreter")
 
 	// Act
 	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
@@ -93,7 +94,7 @@ func TestLookupNew(t *testing.T) {
 	require.Equal(t, 51.8952597, plcR.Location.Lat)
 	require.Equal(t, -8.4715779, plcR.Location.Lon)
 
-	plcM := model.LoadPlaceByID(ctx, db, plcR.ID)
+	plcM := must.Get(qs.LoadPlace(ctx, plcR.ID))
 	require.NotNil(t, plcM)
 	require.Equal(t, "Izz Cafe", plcM.Name)
 	require.Equal(t, 51.8952597, plcM.Lat)
@@ -104,12 +105,12 @@ func TestLookupExisting(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	db := database.Open(":memory:")
+	qs := model.New(database.Open(":memory:"))
 
-	model.CreatePlace(ctx, db, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096)
+	must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, db, "")
+	srv := NewTestServer(t, authr, qs, "")
 
 	// Act
 	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
