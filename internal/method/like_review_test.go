@@ -186,7 +186,7 @@ func TestLikeReviewDecay(t *testing.T) {
 	ctx := t.Context()
 
 	mockClock := clock.NewMock()
-	mytime.SetClock(mockClock)
+	mytime.SetClockInTest(t, mockClock)
 
 	qs := model.New(database.Open(":memory:"))
 	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"codeberg.org/socialmaps/api/internal/render"
@@ -26,7 +27,7 @@ type updateReviewArgs struct {
 // 1 hour
 const maxDelayInSec = 1 * 60 * 60
 
-func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Response[resource.Review], error) {
+func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*DynamicResponse[resource.Review], error) {
 	usr := GetAuthUser(ctx)
 
 	rvwM, err := m.QS.LoadReview(ctx, args.ReviewID)
@@ -46,6 +47,13 @@ func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Re
 		return nil, huma.Error400BadRequest("too late")
 	}
 
+	var status int
+	if (args.Body.Comment == nil && !rvwM.Comment.Valid) || rvwM.Comment.String == *args.Body.Comment {
+		status = http.StatusOK
+	} else {
+		status = http.StatusAccepted
+	}
+
 	var comment sql.NullString
 	if args.Body.Comment != nil {
 		comment = sql.NullString{String: *args.Body.Comment, Valid: true}
@@ -60,5 +68,5 @@ func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Re
 
 	rvwR := render.Review(rvwM)
 
-	return &Response[resource.Review]{Body: rvwR}, nil
+	return &DynamicResponse[resource.Review]{Body: rvwR, Status: status}, nil
 }

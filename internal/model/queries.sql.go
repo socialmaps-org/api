@@ -138,7 +138,7 @@ INSERT INTO user (
     ?,
     ?
 )
-ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name
+ON CONFLICT (id) DO UPDATE SET display_name = excluded.display_name
 RETURNING id, created, updated, display_name
 `
 

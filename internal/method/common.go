@@ -10,6 +10,11 @@ type Common struct {
 	QS *model.Queries
 }
 
+type DynamicResponse[B any] struct {
+	Body   B
+	Status int
+}
+
 type Response[B any] struct {
 	Body B
 }

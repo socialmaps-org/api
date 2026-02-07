@@ -183,10 +183,23 @@ FOR EACH ROW BEGIN
     ;
 END;
 
+CREATE TRIGGER on_review_comment_update
+AFTER UPDATE OF comment ON review
+FOR EACH ROW BEGIN
+    UPDATE review SET
+        last_decision_at = NULL,
+        last_decision_by = NULL,
+        last_decision_approved = NULL
+    WHERE
+        id = old.id
+        AND old.comment <> new.comment
+    ;
+END;
+
 CREATE TRIGGER on_review_liked_update
 AFTER UPDATE OF liked ON review
 FOR EACH ROW BEGIN
-    UPDATE places SET
+    UPDATE place SET
         n_likes
         = n_likes + 1,
         n_dislikes
@@ -202,7 +215,7 @@ FOR EACH ROW BEGIN
         AND NOT old.liked
         AND new.liked
     ;
-    UPDATE places SET
+    UPDATE place SET
         n_likes
         = n_likes - 1,
         n_dislikes
