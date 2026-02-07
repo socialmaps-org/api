@@ -23,6 +23,10 @@ func Mux(authr web.Authenticator, qs *model.Queries, overpassEndpoint string) *h
 	mux := http.NewServeMux()
 
 	config := huma.DefaultConfig("Social Maps API", "0.20251213.0")
+	// Unset CreateHooks in the default config to stop using
+	// `SchemaLinkTransformer` that adds `$schema` fields to responses.
+	// See <https://github.com/danielgtaylor/huma/issues/428>
+	config.CreateHooks = nil
 	config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"oauth2": {
 			Type: "oauth2",
