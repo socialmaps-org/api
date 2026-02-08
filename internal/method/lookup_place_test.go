@@ -15,39 +15,26 @@ import (
 	"codeberg.org/socialmaps/api/internal/resource"
 )
 
-const overpassDoc = `
-{
-  "version": 0.6,
-  "generator": "Overpass API 0.7.62.8 e802775f",
-  "osm3s": {
-    "timestamp_osm_base": "2025-10-18T16:51:30Z",
-    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
-  },
-  "elements": [
-    {
-      "type": "node",
-      "id": 7095470096,
-      "lat": 51.8952597,
-      "lon": -8.4715779,
-      "tags": {
-        "addr:city": "Cork",
-        "addr:housenumber": "14",
-        "addr:postcode": "T12 EY24",
-        "addr:street": "George's Quay",
-        "amenity": "restaurant",
-        "cuisine": "palestinian",
-        "entrance": "main",
-        "name": "Izz Cafe",
-        "note": "Called \"cafe\" but self-identifies and functions as a restaurant",
-        "opening_hours": "We 12:00-20:00; Th-Sa 12:00 21:00; Su 12:00-18:00",
-        "phone": "+353 21 229 0689",
-        "takeaway": "yes",
-        "website": "https://izz.ie/",
-        "wheelchair": "yes"
-      }
-    }
-  ]
-}
+const nominatimDoc = `
+[
+  {
+    "place_id": 416921008,
+    "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+    "osm_type": "node",
+    "osm_id": 7095470096,
+    "lat": "51.8952597",
+    "lon": "-8.4715779",
+    "category": "amenity",
+    "type": "restaurant",
+    "place_rank": 30,
+    "importance": 6.924620431825769e-5,
+    "addresstype": "amenity",
+    "name": "Izz Cafe",
+    "display_name": "Izz Cafe, 14, George's Quay, South Parish, South Gate A, Cork, County Cork, Munster, T12 EY24, Ireland",
+    "namedetails": { "name": "Izz Cafe" },
+    "boundingbox": ["51.8952097", "51.8953097", "-8.4716279", "-8.4715279"]
+  }
+]
 `
 
 func TestLookupNew(t *testing.T) {
@@ -56,21 +43,20 @@ func TestLookupNew(t *testing.T) {
 
 	qs := model.New(database.Open(":memory:"))
 
-	overpassSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/interpreter", r.URL.Path)
-		require.Equal(
-			t,
-			`[out:json];nwr(51.8951601, -8.4717157, 51.8953399, -8.4714243)[name];out center tags;`,
-			r.FormValue("data"),
-		)
+	nominatimSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/search", r.URL.Path)
+		require.Equal(t, "izz cafe", r.FormValue("amenity"))
+		require.Equal(t, "jsonv2", r.FormValue("format"))
+		require.Equal(t, "1", r.FormValue("namedetails"))
+		require.Equal(t, "-8.4722987, 51.8948003, -8.4708413, 51.8956997", r.FormValue("viewbox"))
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(overpassDoc))
+		w.Write([]byte(nominatimDoc))
 	}))
-	defer overpassSrv.Close()
+	defer nominatimSrv.Close()
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, overpassSrv.URL+"/api/interpreter")
+	srv := NewTestServer(t, authr, qs, nominatimSrv.URL)
 
 	// Act
 	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)

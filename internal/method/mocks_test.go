@@ -53,8 +53,8 @@ func (a *TestAuthenticator) Introspect(token string) (*web.Authentication, error
 	return a.Authenticator.Introspect(token)
 }
 
-func NewTestServer(t *testing.T, authr web.Authenticator, qs *model.Queries, overpassEndpoint string) *httptest.Server {
-	handler := Mux(authr, qs, overpassEndpoint)
+func NewTestServer(t *testing.T, authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *httptest.Server {
+	handler := Mux(authr, qs, nominatimEndpoint)
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 

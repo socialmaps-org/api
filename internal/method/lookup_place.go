@@ -4,21 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"codeberg.org/socialmaps/api/internal/fun"
 	"codeberg.org/socialmaps/api/internal/geo"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/name"
-	"codeberg.org/socialmaps/api/internal/overpass"
+	"codeberg.org/socialmaps/api/internal/nominatim"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
 )
 
 type LookupPlace struct {
 	Common
-	OverpassEndpoint string
+	NominatimEndpoint string
 }
 
 type lookupPlaceArgs struct {
@@ -28,7 +27,7 @@ type lookupPlaceArgs struct {
 }
 
 func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Response[resource.Place], error) {
-	bbox := geo.NewBBox(args.Lat, args.Lon, 10)
+	bbox := geo.NewBBox(args.Lat, args.Lon, 50)
 	slog.InfoContext(ctx, "bbox",
 		"south", bbox.South, "west", bbox.West, "north", bbox.North, "east", bbox.East,
 	)
@@ -41,9 +40,13 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 	dbCandidates := fun.Filter(
 		places,
 		func(plc model.Place) bool {
+			// TODO: we should save all names and check for equivalency against
+			// each of them like we do for nominatim results to support localisation
 			return name.Equivalent(args.Name, plc.Name)
 		},
 	)
+
+	slog.InfoContext(ctx, "db results", "results", dbCandidates)
 
 	if len(dbCandidates) > 1 {
 		return nil, errors.New("internal server error")
@@ -52,35 +55,32 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 		return &Response[resource.Place]{Body: render.Place(plcM)}, nil
 	}
 
-	slog.InfoContext(ctx, "db results", "results", dbCandidates)
-
-	opRes, err := overpass.Query(
-		m.OverpassEndpoint,
-		fmt.Sprintf(
-			// OpenStreetMap requires 7 decimal places for geographic coordinates.
-			`[out:json];nwr(%.7f, %.7f, %.7f, %.7f)[name];out center tags;`,
-			bbox.South, bbox.West, bbox.North, bbox.East,
-		),
-	)
+	nomPlaces, err := nominatim.Search(ctx, m.NominatimEndpoint, args.Name, bbox)
 	if err != nil {
 		return nil, err
 	}
 
-	opCandidates := fun.Filter(
-		opRes.Elements,
-		func(el overpass.Element) bool {
-			return name.Equivalent(args.Name, el.Tags["name"])
+	nomCandidates := fun.Filter(
+		nomPlaces,
+		func(np nominatim.Place) bool {
+			for _, nam := range np.Names {
+				if name.Equivalent(nam, args.Name) {
+					return true
+				}
+			}
+			return false
 		},
 	)
 
-	if len(opCandidates) > 1 {
-		return nil, errors.New("multiple elements with the same name exist")
-	} else if len(opCandidates) == 0 {
+	if len(nomCandidates) > 1 {
+		return nil, errors.New("internal server error")
+	} else if len(nomCandidates) == 0 {
 		return nil, errors.New("not found")
 	}
 
-	el := opCandidates[0]
-	plcM, err := m.QS.CreatePlace(ctx, el.Tags["name"], el.Lat(), el.Lon(), el.Type, el.ID)
+	plcN := nomCandidates[0]
+
+	plcM, err := m.QS.CreatePlace(ctx, plcN.Name, plcN.Lat, plcN.Lon, plcN.Type, plcN.ID)
 	if err != nil {
 		return nil, err
 	}

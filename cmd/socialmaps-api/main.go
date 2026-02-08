@@ -23,7 +23,7 @@ func main() {
 		MistralSecret       string `env:"MISTRAL_SECRET"`
 		DatabaseDSN         string `env:"DATABASE_DSN" envDefault:"socialmaps-api.sqlite3"`
 		ListenAddr          string `env:"LISTEN_ADDR" envDefault:"127.0.0.1:8080"`
-		OverpassEndpoint    string `env:"OVERPASS_ENDPOINT" envDefault:"https://overpass-api.de/api/interpreter"`
+		NominatimEndpoint   string `env:"NOMINATIM_ENDPOINT" envDefault:"https://nominatim.openstreetmap.org"`
 	}
 	err := env.Parse(&envvars)
 	if err != nil {
@@ -46,7 +46,7 @@ func main() {
 		envvars.OAuth2ClientSecret,
 	)
 
-	mux := method.Mux(authr, qs, envvars.OverpassEndpoint)
+	mux := method.Mux(authr, qs, envvars.NominatimEndpoint)
 
 	slog.Info("LISTENING", "listen_addr", envvars.ListenAddr)
 	err = http.ListenAndServe(envvars.ListenAddr, mux)
