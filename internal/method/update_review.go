@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"time"
 
 	"codeberg.org/socialmaps/api/internal/render"
@@ -16,12 +17,20 @@ type UpdateReview struct {
 	Common
 }
 
+type updateReviewBodyArg struct {
+	Liked   bool   `json:"liked"`
+	Comment string `json:"comment"`
+}
+
 type updateReviewArgs struct {
-	ReviewID int64 `path:"review_id" minimum:"0"`
-	Body     struct {
-		Liked   bool    `json:"liked"`
-		Comment *string `json:"comment"`
-	}
+	ReviewID int64 `path:"review_id" minimum:"1"`
+	Body     updateReviewBodyArg
+}
+
+// Inline updateReviewBodyArg instead of using refs to avoid listing it under Schemas.
+func (updateReviewBodyArg) Schema(r huma.Registry) *huma.Schema {
+	type raw updateReviewBodyArg
+	return huma.SchemaFromType(r, reflect.TypeOf(raw{}))
 }
 
 // 1 hour
@@ -48,15 +57,15 @@ func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Dy
 	}
 
 	var status int
-	if (args.Body.Comment == nil && !rvwM.Comment.Valid) || rvwM.Comment.String == *args.Body.Comment {
+	if (args.Body.Comment == "" && !rvwM.Comment.Valid) || rvwM.Comment.String == args.Body.Comment {
 		status = http.StatusOK
 	} else {
 		status = http.StatusAccepted
 	}
 
 	var comment sql.NullString
-	if args.Body.Comment != nil {
-		comment = sql.NullString{String: *args.Body.Comment, Valid: true}
+	if args.Body.Comment != "" {
+		comment = sql.NullString{String: args.Body.Comment, Valid: true}
 	} else {
 		comment = sql.NullString{Valid: false}
 	}

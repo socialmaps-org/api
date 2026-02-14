@@ -15,7 +15,7 @@ type ListReviews struct {
 }
 
 type listReviewsArgs struct {
-	PlaceID int64 `path:"place_id" minimum:"0"`
+	PlaceID int64 `path:"place_id" minimum:"1"`
 	Limit   int64 `query:"limit" minimum:"1" maximum:"100" default:"20"`
 
 	LastCreated int64 `query:"last_created" hidden:"true" dependentRequired:"LastID"`

@@ -12,7 +12,7 @@ type LikeReview struct {
 }
 
 type likeReviewArgs struct {
-	ReviewID int64 `path:"review_id" minimum:"0"`
+	ReviewID int64 `path:"review_id" minimum:"1"`
 }
 
 func (m *LikeReview) Execute(ctx context.Context, args *likeReviewArgs) (*struct{}, error) {

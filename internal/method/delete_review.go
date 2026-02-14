@@ -12,7 +12,7 @@ type DeleteReview struct {
 }
 
 type deleteReviewArgs struct {
-	ReviewID int64 `path:"review_id" minimum:"0"`
+	ReviewID int64 `path:"review_id" minimum:"1"`
 }
 
 func (m *DeleteReview) Execute(ctx context.Context, args *deleteReviewArgs) (*struct{}, error) {

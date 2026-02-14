@@ -12,7 +12,7 @@ type UnlikeReview struct {
 }
 
 type unlikeReviewArgs struct {
-	ReviewID int64 `path:"review_id" minimum:"0"`
+	ReviewID int64 `path:"review_id" minimum:"1"`
 }
 
 func (m *UnlikeReview) Execute(ctx context.Context, args *unlikeReviewArgs) (*struct{}, error) {

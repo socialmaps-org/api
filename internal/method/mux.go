@@ -7,6 +7,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/multiline"
 	"codeberg.org/socialmaps/api/internal/web"
 )
 
@@ -46,8 +47,12 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 		Method:      http.MethodGet,
 		Path:        "/v1/places/lookup",
 		Summary:     "Lookup a Place",
-		Description: "desc",
-		Tags:        []string{"Places"},
+		Description: multiline.Dedent(`
+			Look up a Place by its name and geo-coordinates.
+
+			We require clients to look up Places by their "name + location" because OpenStreetMap IDs are [not permanent](https://wiki.openstreetmap.org/wiki/Permanent_ID). You can read more about it in the [docs](https://docs.socialmaps.org/https://docs.socialmaps.org/lookups/).
+		`),
+		Tags: []string{"Places"},
 	}, (&LookupPlace{
 		Common:            c,
 		NominatimEndpoint: nominatimEndpoint,
@@ -58,8 +63,10 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 		Method:      http.MethodGet,
 		Path:        "/v1/places/{place_id}",
 		Summary:     "Retrieve a Place",
-		Description: "desc",
-		Tags:        []string{"Places"},
+		Description: multiline.Dedent(`
+			Retrieve a Place by ID.
+		`),
+		Tags: []string{"Places"},
 	}, (&RetrievePlace{
 		Common: c,
 	}).Execute)
@@ -69,18 +76,22 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 		Method:      http.MethodGet,
 		Path:        "/v1/places/{place_id}/reviews",
 		Summary:     "List Reviews of a Place",
-		Description: "desc",
-		Tags:        []string{"Reviews"},
+		Description: multiline.Dedent(`
+			List Reviews of a Place by Place ID.
+		`),
+		Tags: []string{"Reviews"},
 	}, (&ListReviews{
 		Common: c,
 	}).Execute)
 
 	huma.Register(api, huma.Operation{
-		OperationID:   "create_review",
-		Method:        http.MethodPost,
-		Path:          "/v1/places/{place_id}/reviews",
-		Summary:       "Create a Review",
-		Description:   "desc",
+		OperationID: "create_review",
+		Method:      http.MethodPost,
+		Path:        "/v1/places/{place_id}/reviews",
+		Summary:     "Create a Review",
+		Description: multiline.Dedent(`
+			Create a Review of a Place.
+		`),
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusAccepted,
 		Middlewares: huma.Middlewares{
@@ -98,8 +109,12 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 		Method:      http.MethodPut,
 		Path:        "/v1/reviews/{review_id}",
 		Summary:     "Update a Review",
-		Description: "desc",
-		Tags:        []string{"Reviews"},
+		Description: multiline.Dedent(`
+			Update a Review.
+
+			You cannot update a Review more than an hour after creating it. You can, however, delete a Review any time and create a new one.
+		`),
+		Tags: []string{"Reviews"},
 		Middlewares: huma.Middlewares{
 			GetAuthMiddleware(api, authr, qs),
 		},
@@ -111,11 +126,13 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 	}).Execute)
 
 	huma.Register(api, huma.Operation{
-		OperationID:   "delete_review",
-		Method:        http.MethodDelete,
-		Path:          "/v1/reviews/{review_id}",
-		Summary:       "Delete a Review",
-		Description:   "desc",
+		OperationID: "delete_review",
+		Method:      http.MethodDelete,
+		Path:        "/v1/reviews/{review_id}",
+		Summary:     "Delete a Review",
+		Description: multiline.Dedent(`
+			Delete a Review.
+		`),
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusNoContent,
 		Middlewares: huma.Middlewares{
@@ -129,11 +146,15 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 	}).Execute)
 
 	huma.Register(api, huma.Operation{
-		OperationID:   "like_review",
-		Method:        http.MethodPut,
-		Path:          "/v1/reviews/{review_id}/like",
-		Summary:       "Like a Review",
-		Description:   "desc",
+		OperationID: "like_review",
+		Method:      http.MethodPut,
+		Path:        "/v1/reviews/{review_id}/like",
+		Summary:     "Like a Review",
+		Description: multiline.Dedent(`
+			Like a Review.
+
+			Note that you cannot like your own Review.
+		`),
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusNoContent,
 		Middlewares: huma.Middlewares{
@@ -147,11 +168,13 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 	}).Execute)
 
 	huma.Register(api, huma.Operation{
-		OperationID:   "unlike_review",
-		Method:        http.MethodPut,
-		Path:          "/v1/reviews/{review_id}/unlike",
-		Summary:       "Unlike a Review",
-		Description:   "desc",
+		OperationID: "unlike_review",
+		Method:      http.MethodPut,
+		Path:        "/v1/reviews/{review_id}/unlike",
+		Summary:     "Unlike a Review",
+		Description: multiline.Dedent(`
+			Unlike a Review.
+		`),
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusNoContent,
 		Middlewares: huma.Middlewares{

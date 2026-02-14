@@ -3,6 +3,7 @@ package method
 import (
 	"context"
 	"database/sql"
+	"reflect"
 
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
@@ -13,12 +14,20 @@ type CreateReview struct {
 	Common
 }
 
+type createReviewBodyArg struct {
+	Liked   bool   `json:"liked"`
+	Comment string `json:"comment"`
+}
+
 type createReviewArgs struct {
 	PlaceID int64 `path:"place_id" minimum:"0"`
-	Body    struct {
-		Liked   bool   `json:"liked"`
-		Comment string `json:"comment"`
-	}
+	Body    createReviewBodyArg
+}
+
+// Inline createReviewBodyArg instead of using refs to avoid listing it under Schemas.
+func (createReviewBodyArg) Schema(r huma.Registry) *huma.Schema {
+	type raw createReviewBodyArg
+	return huma.SchemaFromType(r, reflect.TypeOf(raw{}))
 }
 
 func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) (*Response[resource.Review], error) {
