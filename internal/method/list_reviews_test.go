@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"codeberg.org/socialmaps/api/internal/database"
+	"codeberg.org/socialmaps/api/internal/j"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
 	"codeberg.org/socialmaps/api/internal/mytime"
-	"codeberg.org/socialmaps/api/internal/resource"
 )
 
 func TestListReviews(t *testing.T) {
@@ -52,19 +52,19 @@ func TestListReviews(t *testing.T) {
 	// Assert (#1)
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	list := resource.List[resource.Review]{}
-	err = json.NewDecoder(res.Body).Decode(&list)
+	var listR any
+	err = json.NewDecoder(res.Body).Decode(&listR)
 	require.NoError(t, err)
-	require.Len(t, list.Data, 1)
-	require.Equal(t, rvwB.ID, list.Data[0].ID)
+	require.Len(t, j.Get[[]any](listR, "data"), 1)
+	require.Equal(t, rvwB.ID, j.Get[int64](listR, "data", 0, "id"))
 
 	// Act (#2) [Next]
 	req, err = http.NewRequest("GET", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID), nil)
 	require.NoError(t, err)
 	req.URL.RawQuery = url.Values{
 		"limit":        {"1"},
-		"last_id":      {fmt.Sprint(list.Data[0].ID)},
-		"last_created": {fmt.Sprint(list.Data[0].Created)},
+		"last_id":      {fmt.Sprint(j.Get[int64](listR, "data", 0, "id"))},
+		"last_created": {fmt.Sprint(j.Get[int64](listR, "data", 0, "created"))},
 	}.Encode()
 
 	res, err = http.DefaultClient.Do(req)
@@ -73,19 +73,18 @@ func TestListReviews(t *testing.T) {
 	// Assert (#2) [Next]
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	list = resource.List[resource.Review]{}
-	err = json.NewDecoder(res.Body).Decode(&list)
+	err = json.NewDecoder(res.Body).Decode(&listR)
 	require.NoError(t, err)
-	require.Len(t, list.Data, 1)
-	require.Equal(t, rvwA.ID, list.Data[0].ID)
+	require.Len(t, j.Get[[]any](listR, "data"), 1)
+	require.Equal(t, rvwA.ID, j.Get[int64](listR, "data", 0, "id"))
 
 	// Act (#3) [Previous]
 	req, err = http.NewRequest("GET", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID), nil)
 	require.NoError(t, err)
 	req.URL.RawQuery = url.Values{
 		"limit":         {"1"},
-		"first_id":      {fmt.Sprint(list.Data[0].ID)},
-		"first_created": {fmt.Sprint(list.Data[0].Created)},
+		"first_id":      {fmt.Sprint(j.Get[int64](listR, "data", 0, "id"))},
+		"first_created": {fmt.Sprint(j.Get[int64](listR, "data", 0, "created"))},
 	}.Encode()
 
 	res, err = http.DefaultClient.Do(req)
@@ -94,9 +93,8 @@ func TestListReviews(t *testing.T) {
 	// Assert (#3) [Previous]
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	list = resource.List[resource.Review]{}
-	err = json.NewDecoder(res.Body).Decode(&list)
+	err = json.NewDecoder(res.Body).Decode(&listR)
 	require.NoError(t, err)
-	require.Len(t, list.Data, 1)
-	require.Equal(t, rvwB.ID, list.Data[0].ID)
+	require.Len(t, j.Get[[]any](listR, "data"), 1)
+	require.Equal(t, rvwB.ID, j.Get[int64](listR, "data", 0, "id"))
 }

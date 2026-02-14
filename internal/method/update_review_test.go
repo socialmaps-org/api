@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"codeberg.org/socialmaps/api/internal/database"
+	"codeberg.org/socialmaps/api/internal/j"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
-	"codeberg.org/socialmaps/api/internal/resource"
 )
 
 func TestUpdateReviewAuthorizationMissing(t *testing.T) {
@@ -99,14 +99,14 @@ func TestUpdateReviewCommentAndDislike(t *testing.T) {
 
 	require.Equal(t, http.StatusAccepted, res.StatusCode)
 
-	var rvwR resource.Review
+	var rvwR any
 	err = json.NewDecoder(res.Body).Decode(&rvwR)
 	require.NoError(t, err)
-	require.Equal(t, plc.ID, rvwR.Place.ID)
-	require.False(t, rvwR.Liked)
-	require.Equal(t, "I didn't like it!", rvwR.Comment)
+	require.Equal(t, plc.ID, j.Get[int64](rvwR, "place", "id"))
+	require.False(t, j.Get[bool](rvwR, "liked"))
+	require.Equal(t, "I didn't like it!", j.Get[string](rvwR, "comment"))
 
-	rvwM := must.Get(qs.LoadReview(ctx, rvwR.ID))
+	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.False(t, rvwM.Liked)
 	require.Equal(t, "I didn't like it!", rvwM.Comment.String)
@@ -144,14 +144,14 @@ func TestUpdateReviewCommentAndLike(t *testing.T) {
 
 	require.Equal(t, http.StatusAccepted, res.StatusCode)
 
-	var rvwR resource.Review
+	var rvwR any
 	err = json.NewDecoder(res.Body).Decode(&rvwR)
 	require.NoError(t, err)
-	require.Equal(t, plc.ID, rvwR.Place.ID)
-	require.True(t, rvwR.Liked)
-	require.Equal(t, "I liked it!", rvwR.Comment)
+	require.Equal(t, plc.ID, j.Get[int64](rvwR, "place", "id"))
+	require.True(t, j.Get[bool](rvwR, "liked"))
+	require.Equal(t, "I liked it!", j.Get[string](rvwR, "comment"))
 
-	rvwM := must.Get(qs.LoadReview(ctx, rvwR.ID))
+	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.True(t, rvwM.Liked)
 	require.Equal(t, "I liked it!", rvwM.Comment.String)
@@ -189,14 +189,14 @@ func TestUpdateReviewCommentOnly(t *testing.T) {
 
 	require.Equal(t, http.StatusAccepted, res.StatusCode)
 
-	var rvwR resource.Review
+	var rvwR any
 	err = json.NewDecoder(res.Body).Decode(&rvwR)
 	require.NoError(t, err)
-	require.Equal(t, plc.ID, rvwR.Place.ID)
-	require.False(t, rvwR.Liked)
-	require.Equal(t, "I didn't like it!", rvwR.Comment)
+	require.Equal(t, plc.ID, j.Get[int64](rvwR, "place", "id"))
+	require.False(t, j.Get[bool](rvwR, "liked"))
+	require.Equal(t, "I didn't like it!", j.Get[string](rvwR, "comment"))
 
-	rvwM := must.Get(qs.LoadReview(ctx, rvwR.ID))
+	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.False(t, rvwM.Liked)
 	require.Equal(t, "I didn't like it!", rvwM.Comment.String)
@@ -233,14 +233,14 @@ func TestUpdateReviewLikeOnly(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	var rvwR resource.Review
+	var rvwR any
 	err = json.NewDecoder(res.Body).Decode(&rvwR)
 	require.NoError(t, err)
-	require.Equal(t, plc.ID, rvwR.Place.ID)
-	require.True(t, rvwR.Liked)
-	require.Equal(t, "I liked it!", rvwR.Comment)
+	require.Equal(t, plc.ID, j.Get[int64](rvwR, "place", "id"))
+	require.True(t, j.Get[bool](rvwR, "liked"))
+	require.Equal(t, "I liked it!", j.Get[string](rvwR, "comment"))
 
-	rvwM := must.Get(qs.LoadReview(ctx, rvwR.ID))
+	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.True(t, rvwM.Liked)
 	require.Equal(t, "I liked it!", rvwM.Comment.String)
@@ -275,14 +275,14 @@ func TestUpdateReviewDislikeOnly(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	var rvwR resource.Review
+	var rvwR any
 	err = json.NewDecoder(res.Body).Decode(&rvwR)
 	require.NoError(t, err)
-	require.Equal(t, plc.ID, rvwR.Place.ID)
-	require.False(t, rvwR.Liked)
-	require.Equal(t, "I didn't like it!", rvwR.Comment)
+	require.Equal(t, plc.ID, j.Get[int64](rvwR, "place", "id"))
+	require.False(t, j.Get[bool](rvwR, "liked"))
+	require.Equal(t, "I didn't like it!", j.Get[string](rvwR, "comment"))
 
-	rvwM := must.Get(qs.LoadReview(ctx, rvwR.ID))
+	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.False(t, rvwM.Liked)
 	require.Equal(t, "I didn't like it!", rvwM.Comment.String)

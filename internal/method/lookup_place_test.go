@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"codeberg.org/socialmaps/api/internal/database"
+	"codeberg.org/socialmaps/api/internal/j"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
-	"codeberg.org/socialmaps/api/internal/resource"
 )
 
 const nominatimDoc = `
@@ -73,14 +73,14 @@ func TestLookupNew(t *testing.T) {
 	// Assert
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	var plcR resource.Place
+	var plcR any
 	err = json.NewDecoder(res.Body).Decode(&plcR)
 	require.NoError(t, err)
-	require.Equal(t, "Izz Cafe", plcR.Name)
-	require.Equal(t, 51.8952597, plcR.Location.Lat)
-	require.Equal(t, -8.4715779, plcR.Location.Lon)
+	require.Equal(t, "Izz Cafe", j.Get[string](plcR, "name"))
+	require.Equal(t, 51.8952597, j.Get[float64](plcR, "location", "lat"))
+	require.Equal(t, -8.4715779, j.Get[float64](plcR, "location", "lon"))
 
-	plcM := must.Get(qs.LoadPlace(ctx, plcR.ID))
+	plcM := must.Get(qs.LoadPlace(ctx, j.Get[int64](plcR, "id")))
 	require.NotNil(t, plcM)
 	require.Equal(t, "Izz Cafe", plcM.Name)
 	require.Equal(t, 51.8952597, plcM.Lat)
@@ -113,10 +113,10 @@ func TestLookupExisting(t *testing.T) {
 	// Assert
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	var plcR resource.Place
+	var plcR any
 	err = json.NewDecoder(res.Body).Decode(&plcR)
 	require.NoError(t, err)
-	require.Equal(t, "Izz Cafe", plcR.Name)
-	require.Equal(t, 51.8952597, plcR.Location.Lat)
-	require.Equal(t, -8.4715779, plcR.Location.Lon)
+	require.Equal(t, "Izz Cafe", j.Get[string](plcR, "name"))
+	require.Equal(t, 51.8952597, j.Get[float64](plcR, "location", "lat"))
+	require.Equal(t, -8.4715779, j.Get[float64](plcR, "location", "lon"))
 }
