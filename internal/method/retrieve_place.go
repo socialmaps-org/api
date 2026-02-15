@@ -14,7 +14,7 @@ type RetrievePlace struct {
 }
 
 type retrievePlaceArgs struct {
-	PlaceID int64 `path:"place_id" minimum:"1"`
+	PlaceID int64 `path:"place_id" minimum:"1" doc:"Unique identifier for the **Place** you are retrieving."`
 }
 
 func (m *RetrievePlace) Execute(ctx context.Context, args *retrievePlaceArgs) (*Response[resource.Place], error) {

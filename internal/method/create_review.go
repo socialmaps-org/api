@@ -15,12 +15,12 @@ type CreateReview struct {
 }
 
 type createReviewBodyArg struct {
-	Liked   bool   `json:"liked"`
-	Comment string `json:"comment"`
+	Liked   bool   `json:"liked" doc:"Whether the user liked this **Place** or not."`
+	Comment string `json:"comment" doc:"The comment written by the user about this **Place**, if written. Otherwise can be an empty string."`
 }
 
 type createReviewArgs struct {
-	PlaceID int64 `path:"place_id" minimum:"0"`
+	PlaceID int64 `path:"place_id" minimum:"0" doc:"Unique identifier for the **Place** the user is creating a **Review** for."`
 	Body    createReviewBodyArg
 }
 

@@ -79,30 +79,36 @@ LIMIT
     ?;
 
 -- name: ListLatestApprovedReviewsOfPlace :many
-SELECT *
+SELECT
+    sqlc.embed(review), -- noqa
+    sqlc.embed(user) -- noqa
 FROM review
+INNER JOIN user ON review.user_id = user.id
 WHERE
-    place_id = ?
-    AND last_decision_approved
-    AND created <= @last_created
-    AND id < @last_id
+    review.place_id = ?
+    AND review.last_decision_approved
+    AND review.created <= @last_created
+    AND review.id < @last_id
 ORDER BY
-    created DESC,
-    id DESC
+    review.created DESC,
+    review.id DESC
 LIMIT
     ?;
 
 -- name: ListLatestApprovedReviewsOfPlaceReverse :many
-SELECT *
+SELECT
+    sqlc.embed(review), -- noqa
+    sqlc.embed(user) -- noqa
 FROM review
+INNER JOIN user ON review.user_id = user.id
 WHERE
-    place_id = ?
-    AND last_decision_approved
-    AND created >= @first_created
-    AND id > @first_id
+    review.place_id = ?
+    AND review.last_decision_approved
+    AND review.created >= @first_created
+    AND review.id > @first_id
 ORDER BY
-    created DESC,
-    id DESC
+    review.created DESC,
+    review.id DESC
 LIMIT
     ?;
 

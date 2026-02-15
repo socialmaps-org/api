@@ -2,6 +2,8 @@ package method
 
 import (
 	"net/http"
+	"reflect"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
@@ -28,6 +30,15 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 	// `SchemaLinkTransformer` that adds `$schema` fields to responses.
 	// See <https://github.com/danielgtaylor/huma/issues/428>
 	config.CreateHooks = nil
+	config.Components.Schemas = huma.NewMapRegistry(
+		"#/components/schemas/",
+		func(t reflect.Type, hint string) string {
+			if strings.HasPrefix(hint, "override:") {
+				return strings.TrimPrefix(hint, "override:")
+			}
+			return huma.DefaultSchemaNamer(t, hint)
+		},
+	)
 	config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"oauth2": {
 			Type: "oauth2",
@@ -151,9 +162,9 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 		Path:        "/v1/reviews/{review_id}/like",
 		Summary:     "Like a Review",
 		Description: multiline.Dedent(`
-			Like a Review.
+			Like a **Review**.
 
-			Note that you cannot like your own Review.
+			A **User** cannot like their own **Review**.
 		`),
 		Tags:          []string{"Reviews"},
 		DefaultStatus: http.StatusNoContent,

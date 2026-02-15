@@ -18,12 +18,12 @@ type UpdateReview struct {
 }
 
 type updateReviewBodyArg struct {
-	Liked   bool   `json:"liked"`
-	Comment string `json:"comment"`
+	Liked   bool   `json:"liked" doc:"Whether the user liked this **Place** or not."`
+	Comment string `json:"comment" doc:"The comment written by the user about this **Place**, if written. Otherwise can be an empty string."`
 }
 
 type updateReviewArgs struct {
-	ReviewID int64 `path:"review_id" minimum:"1"`
+	ReviewID int64 `path:"review_id" minimum:"1" doc:"Unique identifier for the **Review** the user is updating."`
 	Body     updateReviewBodyArg
 }
 

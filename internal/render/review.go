@@ -15,10 +15,10 @@ func Review(m model.Review) resource.Review {
 		Object:  "review",
 		ID:      m.ID,
 		Created: m.Created,
-		Place: resource.Place{
+		Place: resource.PlaceStub{
 			ID: m.PlaceID,
 		},
-		User: resource.User{
+		User: resource.UserStub{
 			ID: m.UserID,
 		},
 		Liked:   m.Liked,
@@ -26,14 +26,9 @@ func Review(m model.Review) resource.Review {
 	}
 }
 
-func Reviews(ms []model.Review) resource.List[resource.Review] {
-	var rs []resource.Review
-	for _, m := range ms {
-		rs = append(rs, Review(m))
-	}
-
-	return resource.List[resource.Review]{
-		Object: "list",
-		Data:   rs,
+func ReviewWithUser(rvw model.Review, usr model.User) resource.ReviewWithUser {
+	return resource.ReviewWithUser{
+		Review: Review(rvw),
+		User:   User(usr),
 	}
 }

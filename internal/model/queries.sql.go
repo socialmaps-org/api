@@ -291,21 +291,29 @@ func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID
 }
 
 const listLatestApprovedReviewsOfPlace = `-- name: ListLatestApprovedReviewsOfPlace :many
-SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+SELECT
+    review.id, review.created, review.updated, review.place_id, review.user_id, review.liked, review.comment, review.n_likes, review.dec_n_likes, review.dec_updated_at, review.last_decision_at, review.last_decision_by, review.last_decision_approved,
+    user.id, user.created, user.updated, user.display_name
 FROM review
+INNER JOIN user ON review.user_id = user.id
 WHERE
-    place_id = ?
-    AND last_decision_approved
-    AND created <= ?
-    AND id < ?
+    review.place_id = ?
+    AND review.last_decision_approved
+    AND review.created <= ?
+    AND review.id < ?
 ORDER BY
-    created DESC,
-    id DESC
+    review.created DESC,
+    review.id DESC
 LIMIT
     ?
 `
 
-func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID int64, lastCreated int64, lastID int64, limit int64) ([]Review, error) {
+type ListLatestApprovedReviewsOfPlaceRow struct {
+	Review Review
+	User   User
+}
+
+func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID int64, lastCreated int64, lastID int64, limit int64) ([]ListLatestApprovedReviewsOfPlaceRow, error) {
 	rows, err := q.db.QueryContext(ctx, listLatestApprovedReviewsOfPlace,
 		placeID,
 		lastCreated,
@@ -316,23 +324,27 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Review
+	var items []ListLatestApprovedReviewsOfPlaceRow
 	for rows.Next() {
-		var i Review
+		var i ListLatestApprovedReviewsOfPlaceRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Created,
-			&i.Updated,
-			&i.PlaceID,
-			&i.UserID,
-			&i.Liked,
-			&i.Comment,
-			&i.NLikes,
-			&i.DecNLikes,
-			&i.DecUpdatedAt,
-			&i.LastDecisionAt,
-			&i.LastDecisionBy,
-			&i.LastDecisionApproved,
+			&i.Review.ID,
+			&i.Review.Created,
+			&i.Review.Updated,
+			&i.Review.PlaceID,
+			&i.Review.UserID,
+			&i.Review.Liked,
+			&i.Review.Comment,
+			&i.Review.NLikes,
+			&i.Review.DecNLikes,
+			&i.Review.DecUpdatedAt,
+			&i.Review.LastDecisionAt,
+			&i.Review.LastDecisionBy,
+			&i.Review.LastDecisionApproved,
+			&i.User.ID,
+			&i.User.Created,
+			&i.User.Updated,
+			&i.User.DisplayName,
 		); err != nil {
 			return nil, err
 		}
@@ -348,21 +360,29 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 }
 
 const listLatestApprovedReviewsOfPlaceReverse = `-- name: ListLatestApprovedReviewsOfPlaceReverse :many
-SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+SELECT
+    review.id, review.created, review.updated, review.place_id, review.user_id, review.liked, review.comment, review.n_likes, review.dec_n_likes, review.dec_updated_at, review.last_decision_at, review.last_decision_by, review.last_decision_approved,
+    user.id, user.created, user.updated, user.display_name
 FROM review
+INNER JOIN user ON review.user_id = user.id
 WHERE
-    place_id = ?
-    AND last_decision_approved
-    AND created >= ?
-    AND id > ?
+    review.place_id = ?
+    AND review.last_decision_approved
+    AND review.created >= ?
+    AND review.id > ?
 ORDER BY
-    created DESC,
-    id DESC
+    review.created DESC,
+    review.id DESC
 LIMIT
     ?
 `
 
-func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, placeID int64, firstCreated int64, firstID int64, limit int64) ([]Review, error) {
+type ListLatestApprovedReviewsOfPlaceReverseRow struct {
+	Review Review
+	User   User
+}
+
+func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, placeID int64, firstCreated int64, firstID int64, limit int64) ([]ListLatestApprovedReviewsOfPlaceReverseRow, error) {
 	rows, err := q.db.QueryContext(ctx, listLatestApprovedReviewsOfPlaceReverse,
 		placeID,
 		firstCreated,
@@ -373,23 +393,27 @@ func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, p
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Review
+	var items []ListLatestApprovedReviewsOfPlaceReverseRow
 	for rows.Next() {
-		var i Review
+		var i ListLatestApprovedReviewsOfPlaceReverseRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Created,
-			&i.Updated,
-			&i.PlaceID,
-			&i.UserID,
-			&i.Liked,
-			&i.Comment,
-			&i.NLikes,
-			&i.DecNLikes,
-			&i.DecUpdatedAt,
-			&i.LastDecisionAt,
-			&i.LastDecisionBy,
-			&i.LastDecisionApproved,
+			&i.Review.ID,
+			&i.Review.Created,
+			&i.Review.Updated,
+			&i.Review.PlaceID,
+			&i.Review.UserID,
+			&i.Review.Liked,
+			&i.Review.Comment,
+			&i.Review.NLikes,
+			&i.Review.DecNLikes,
+			&i.Review.DecUpdatedAt,
+			&i.Review.LastDecisionAt,
+			&i.Review.LastDecisionBy,
+			&i.Review.LastDecisionApproved,
+			&i.User.ID,
+			&i.User.Created,
+			&i.User.Updated,
+			&i.User.DisplayName,
 		); err != nil {
 			return nil, err
 		}
