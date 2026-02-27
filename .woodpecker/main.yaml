@@ -4,44 +4,44 @@ when:
 
 services:
   - name: postgres
-    image: postgres:18.3-trixie
+    image: docker.io/postgres:18.3-trixie
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
 
 steps:
   - name: check-scripts
-    image: koalaman/shellcheck-alpine:latest
+    image: docker.io/koalaman/shellcheck-alpine:v0.11.0
     commands:
       - ./scripts/check-scripts.sh
 
   - name: check-format
-    image: golang:1.26.0-trixie
+    image: docker.io/golang:1.26.0-trixie
     commands:
       - ./scripts/check-format.sh
     depends_on: [check-scripts]
 
   - name: check-deadcode
-    image: golang:1.26.0-trixie
+    image: docker.io/golang:1.26.0-trixie
     commands:
       - go install golang.org/x/tools/cmd/deadcode@latest
       - ./scripts/check-deadcode.sh
     depends_on: [check-scripts]
 
   - name: lint
-    image: golang:1.26.0-trixie
+    image: docker.io/golang:1.26.0-trixie
     commands:
       - go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
       - ./scripts/lint.sh
     depends_on: [check-scripts]
 
   - name: lint-sql
-    image: sqlfluff/sqlfluff:3.5.0
+    image: docker.io/sqlfluff/sqlfluff:3.5.0
     commands:
       - ./scripts/lint-sql.sh
     depends_on: [check-scripts]
 
   - name: test-schema
-    image: postgres:18.3-trixie
+    image: docker.io/postgres:18.3-trixie
     commands:
       - ./scripts/test-schema.sh
     environment:
@@ -49,7 +49,7 @@ steps:
     depends_on: [lint-sql]
 
   - name: init-db
-    image: postgres:18.3-trixie
+    image: docker.io/postgres:18.3-trixie
     commands:
       - ./scripts/init-db.sh
     environment:
@@ -57,7 +57,7 @@ steps:
     depends_on: [test-schema]
 
   - name: test
-    image: golang:1.26.0-trixie
+    image: docker.io/golang:1.26.0-trixie
     commands:
       - make
       - ./scripts/test.sh
@@ -70,7 +70,7 @@ steps:
     settings:
       platforms: linux/amd64
       logins:
-        - registry:
+        - registry: https://docker.io
           username:
             from_secret: dh_username
           password:
@@ -83,10 +83,9 @@ steps:
   - name: publish
     image: codeberg.org/woodpecker-plugins/docker-buildx:6.0.3
     settings:
-      repo: codeberg.org/socialmaps/api
       platforms: linux/amd64
       logins:
-        - registry:
+        - registry: https://docker.io
           username:
             from_secret: dh_username
           password:
@@ -96,6 +95,7 @@ steps:
             from_secret: cb_username
           password:
             from_secret: cb_password
+      repo: codeberg.org/socialmaps/api
       auto_tag: true
     depends_on: [test]
     when:
