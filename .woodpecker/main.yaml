@@ -20,6 +20,12 @@ steps:
       - ./scripts/check-scripts.sh
     depends_on: [lint-ci]
 
+  - name: check-vuln
+    image: docker.io/golang:1.26.0-trixie
+    commands:
+      - go install golang.org/x/vuln/cmd/govulncheck@latest
+      - ./scripts/check-vuln.sh
+
   - name: check-format
     image: docker.io/golang:1.26.0-trixie
     commands:
