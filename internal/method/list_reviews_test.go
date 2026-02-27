@@ -1,7 +1,6 @@
 package method
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,19 +21,20 @@ import (
 func TestListReviews(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
 	mockClock := clock.NewMock()
 	mytime.SetClockInTest(t, mockClock)
 
-	qs := model.New(database.Open(":memory:"))
-	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
-	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvwA := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: true}))
-	must.Get(qs.CreateReviewDecision(ctx, rvwA.ID, "test-mod", true, ""))
+	qs := model.New(database.OpenInTest(t))
+	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvwA := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	must.Get(qs.CreateReviewDecision(ctx, now, rvwA.ID, "test-mod", true, ""))
 	mockClock.Add(24 * time.Hour)
-	rvwB := must.Get(qs.CreateReview(ctx, plc.ID, usrB.ID, false, sql.NullString{String: "I don't like it!", Valid: true}))
-	must.Get(qs.CreateReviewDecision(ctx, rvwB.ID, "test-mod", true, ""))
+	rvwB := must.Get(qs.CreateReview(ctx, plc.ID, usrB.ID, false, new("I don't like it!"), mytime.Now()))
+	must.Get(qs.CreateReviewDecision(ctx, now, rvwB.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")

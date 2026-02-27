@@ -2,9 +2,9 @@ package method
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/jackc/pgx/v5"
 )
 
 type UnlikeReview struct {
@@ -20,7 +20,7 @@ func (m *UnlikeReview) Execute(ctx context.Context, args *unlikeReviewArgs) (*st
 
 	rvw, err := m.QS.LoadReview(ctx, args.ReviewID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return nil, huma.Error404NotFound("review not found")
 		}
 		return nil, err

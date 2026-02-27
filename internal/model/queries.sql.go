@@ -7,34 +7,41 @@ package model
 
 import (
 	"context"
-	"database/sql"
+	"time"
 )
 
 const createPlace = `-- name: CreatePlace :one
 INSERT INTO place (
-    name,
+    "name",
     lat,
     lon,
     osm_type,
-    osm_id
+    osm_id,
+    created,
+    updated,
+    dec_updated_at
 )
 VALUES (
-    ?,
-    ?,
-    ?,
-    ?,
-    ?
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $6,
+    $6
 )
 RETURNING id, created, updated, name, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
 `
 
-func (q *Queries) CreatePlace(ctx context.Context, name string, lat float64, lon float64, osmType string, osmID int64) (Place, error) {
-	row := q.db.QueryRowContext(ctx, createPlace,
+func (q *Queries) CreatePlace(ctx context.Context, name string, lat float64, lon float64, osmType string, osmID int64, asOf time.Time) (Place, error) {
+	row := q.db.QueryRow(ctx, createPlace,
 		name,
 		lat,
 		lon,
 		osmType,
 		osmID,
+		asOf,
 	)
 	var i Place
 	err := row.Scan(
@@ -61,22 +68,29 @@ INSERT INTO review (
     place_id,
     user_id,
     liked,
-    comment
+    "comment",
+    created,
+    updated,
+    dec_updated_at
 )
 VALUES (
-    ?,
-    ?,
-    ?,
-    ?
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $5,
+    $5
 ) RETURNING id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 `
 
-func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64, liked bool, comment sql.NullString) (Review, error) {
-	row := q.db.QueryRowContext(ctx, createReview,
+func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64, liked bool, comment *string, asOf time.Time) (Review, error) {
+	row := q.db.QueryRow(ctx, createReview,
 		placeID,
 		userID,
 		liked,
 		comment,
+		asOf,
 	)
 	var i Review
 	err := row.Scan(
@@ -99,20 +113,23 @@ func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64,
 
 const createReviewDecision = `-- name: CreateReviewDecision :one
 INSERT INTO review_decision (
+    created,
     review_id,
     moderator,
     approved,
     details
 ) VALUES (
-    ?,
-    ?,
-    ?,
-    ?
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
 ) RETURNING id, created, review_id, moderator, approved, details
 `
 
-func (q *Queries) CreateReviewDecision(ctx context.Context, reviewID int64, moderator string, approved bool, details string) (ReviewDecision, error) {
-	row := q.db.QueryRowContext(ctx, createReviewDecision,
+func (q *Queries) CreateReviewDecision(ctx context.Context, asOf time.Time, reviewID int64, moderator string, approved bool, details string) (ReviewDecision, error) {
+	row := q.db.QueryRow(ctx, createReviewDecision,
+		asOf,
 		reviewID,
 		moderator,
 		approved,
@@ -131,19 +148,23 @@ func (q *Queries) CreateReviewDecision(ctx context.Context, reviewID int64, mode
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO user (
+INSERT INTO "user" (
+    created,
+    updated,
     id,
     display_name
 ) VALUES (
-    ?,
-    ?
+    $1,
+    $1,
+    $2,
+    $3
 )
 ON CONFLICT (id) DO UPDATE SET display_name = excluded.display_name
 RETURNING id, created, updated, display_name
 `
 
-func (q *Queries) CreateUser(ctx context.Context, iD int64, displayName string) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, iD, displayName)
+func (q *Queries) CreateUser(ctx context.Context, asOf time.Time, iD int64, displayName string) (User, error) {
+	row := q.db.QueryRow(ctx, createUser, asOf, iD, displayName)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -157,28 +178,29 @@ func (q *Queries) CreateUser(ctx context.Context, iD int64, displayName string) 
 const deleteReview = `-- name: DeleteReview :exec
 DELETE FROM review
 WHERE
-    id = ?
+    id = $1
 `
 
 func (q *Queries) DeleteReview(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteReview, id)
+	_, err := q.db.Exec(ctx, deleteReview, id)
 	return err
 }
 
 const likeReview = `-- name: LikeReview :exec
 INSERT INTO review_like (
     review_id,
-    user_id
-
+    user_id,
+    created
 ) VALUES (
-    ?,
-    ?
+    $1,
+    $2,
+    $3
 )
 ON CONFLICT DO NOTHING
 `
 
-func (q *Queries) LikeReview(ctx context.Context, reviewID int64, userID int64) error {
-	_, err := q.db.ExecContext(ctx, likeReview, reviewID, userID)
+func (q *Queries) LikeReview(ctx context.Context, reviewID int64, userID int64, asOf time.Time) error {
+	_, err := q.db.Exec(ctx, likeReview, reviewID, userID, asOf)
 	return err
 }
 
@@ -187,17 +209,17 @@ SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_l
 FROM review
 WHERE
     last_decision_approved IS NULL
-    AND created >= ?1
-    AND id > ?2
+    AND created >= $1
+    AND id > $2
 ORDER BY
     created ASC,
     id ASC
 LIMIT
-    ?3
+    $3
 `
 
-func (q *Queries) ListEarliestUnapprovedReviews(ctx context.Context, lastCreated int64, lastID int64, limit int64) ([]Review, error) {
-	rows, err := q.db.QueryContext(ctx, listEarliestUnapprovedReviews, lastCreated, lastID, limit)
+func (q *Queries) ListEarliestUnapprovedReviews(ctx context.Context, lastCreated time.Time, lastID int64, lim int32) ([]Review, error) {
+	rows, err := q.db.Query(ctx, listEarliestUnapprovedReviews, lastCreated, lastID, lim)
 	if err != nil {
 		return nil, err
 	}
@@ -224,9 +246,6 @@ func (q *Queries) ListEarliestUnapprovedReviews(ctx context.Context, lastCreated
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -237,23 +256,23 @@ const listHottestApprovedReviewsOfPlace = `-- name: ListHottestApprovedReviewsOf
 SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 FROM review
 WHERE
-    place_id = ?
+    place_id = $1
     AND last_decision_approved
-    AND dec_n_likes <= ?
-    AND id < ?
+    AND dec_n_likes <= $3
+    AND id < $4
 ORDER BY
     dec_n_likes DESC,
     id DESC
 LIMIT
-    ?
+    $2
 `
 
-func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID int64, lastDecNLikes float64, lastID int64, limit int64) ([]Review, error) {
-	rows, err := q.db.QueryContext(ctx, listHottestApprovedReviewsOfPlace,
+func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID int64, limit int32, lastDecNLikes float64, lastID int64) ([]Review, error) {
+	rows, err := q.db.Query(ctx, listHottestApprovedReviewsOfPlace,
 		placeID,
+		limit,
 		lastDecNLikes,
 		lastID,
-		limit,
 	)
 	if err != nil {
 		return nil, err
@@ -281,9 +300,6 @@ func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -292,20 +308,20 @@ func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID
 
 const listLatestApprovedReviewsOfPlace = `-- name: ListLatestApprovedReviewsOfPlace :many
 SELECT
-    review.id, review.created, review.updated, review.place_id, review.user_id, review.liked, review.comment, review.n_likes, review.dec_n_likes, review.dec_updated_at, review.last_decision_at, review.last_decision_by, review.last_decision_approved,
-    user.id, user.created, user.updated, user.display_name
+    review.id, review.created, review.updated, review.place_id, review.user_id, review.liked, review.comment, review.n_likes, review.dec_n_likes, review.dec_updated_at, review.last_decision_at, review.last_decision_by, review.last_decision_approved, -- noqa
+    usr.id, usr.created, usr.updated, usr.display_name -- noqa
 FROM review
-INNER JOIN user ON review.user_id = user.id
+INNER JOIN "user" AS usr ON review.user_id = usr.id
 WHERE
-    review.place_id = ?
+    review.place_id = $1
     AND review.last_decision_approved
-    AND review.created <= ?
-    AND review.id < ?
+    AND review.created <= to_timestamp($2)
+    AND review.id < $3
 ORDER BY
     review.created DESC,
     review.id DESC
 LIMIT
-    ?
+    $4::bigint
 `
 
 type ListLatestApprovedReviewsOfPlaceRow struct {
@@ -313,12 +329,12 @@ type ListLatestApprovedReviewsOfPlaceRow struct {
 	User   User
 }
 
-func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID int64, lastCreated int64, lastID int64, limit int64) ([]ListLatestApprovedReviewsOfPlaceRow, error) {
-	rows, err := q.db.QueryContext(ctx, listLatestApprovedReviewsOfPlace,
+func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID int64, lastCreated float64, lastID int64, lmt int64) ([]ListLatestApprovedReviewsOfPlaceRow, error) {
+	rows, err := q.db.Query(ctx, listLatestApprovedReviewsOfPlace,
 		placeID,
 		lastCreated,
 		lastID,
-		limit,
+		lmt,
 	)
 	if err != nil {
 		return nil, err
@@ -350,9 +366,6 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -361,20 +374,20 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 
 const listLatestApprovedReviewsOfPlaceReverse = `-- name: ListLatestApprovedReviewsOfPlaceReverse :many
 SELECT
-    review.id, review.created, review.updated, review.place_id, review.user_id, review.liked, review.comment, review.n_likes, review.dec_n_likes, review.dec_updated_at, review.last_decision_at, review.last_decision_by, review.last_decision_approved,
-    user.id, user.created, user.updated, user.display_name
+    review.id, review.created, review.updated, review.place_id, review.user_id, review.liked, review.comment, review.n_likes, review.dec_n_likes, review.dec_updated_at, review.last_decision_at, review.last_decision_by, review.last_decision_approved, -- noqa
+    usr.id, usr.created, usr.updated, usr.display_name -- noqa
 FROM review
-INNER JOIN user ON review.user_id = user.id
+INNER JOIN "user" AS usr ON review.user_id = usr.id
 WHERE
-    review.place_id = ?
+    review.place_id = $1
     AND review.last_decision_approved
-    AND review.created >= ?
-    AND review.id > ?
+    AND review.created >= to_timestamp($2)
+    AND review.id > $3
 ORDER BY
     review.created DESC,
     review.id DESC
 LIMIT
-    ?
+    $4::bigint
 `
 
 type ListLatestApprovedReviewsOfPlaceReverseRow struct {
@@ -382,12 +395,12 @@ type ListLatestApprovedReviewsOfPlaceReverseRow struct {
 	User   User
 }
 
-func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, placeID int64, firstCreated int64, firstID int64, limit int64) ([]ListLatestApprovedReviewsOfPlaceReverseRow, error) {
-	rows, err := q.db.QueryContext(ctx, listLatestApprovedReviewsOfPlaceReverse,
+func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, placeID int64, firstCreated float64, firstID int64, lmt int64) ([]ListLatestApprovedReviewsOfPlaceReverseRow, error) {
+	rows, err := q.db.Query(ctx, listLatestApprovedReviewsOfPlaceReverse,
 		placeID,
 		firstCreated,
 		firstID,
-		limit,
+		lmt,
 	)
 	if err != nil {
 		return nil, err
@@ -419,9 +432,6 @@ func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, p
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -433,12 +443,12 @@ SELECT id, created, updated, name, lat, lon, osm_type, osm_id, n_likes, n_dislik
 FROM
     place
 WHERE
-    ?1 <= lat AND lat <= ?2
-    AND ?3 <= lon AND lon <= ?4
+    $1 <= lat AND lat <= $2
+    AND $3 <= lon AND lon <= $4
 `
 
 func (q *Queries) ListPlacesByCoord(ctx context.Context, latMin float64, latMax float64, lonMin float64, lonMax float64) ([]Place, error) {
-	rows, err := q.db.QueryContext(ctx, listPlacesByCoord,
+	rows, err := q.db.Query(ctx, listPlacesByCoord,
 		latMin,
 		latMax,
 		lonMin,
@@ -471,9 +481,6 @@ func (q *Queries) ListPlacesByCoord(ctx context.Context, latMin float64, latMax 
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -484,14 +491,14 @@ const loadLatestDecisionOfReview = `-- name: LoadLatestDecisionOfReview :one
 SELECT id, created, review_id, moderator, approved, details
 FROM review_decision
 WHERE
-    review_id = ?
+    review_id = $1
 ORDER BY
     created DESC
 LIMIT 1
 `
 
 func (q *Queries) LoadLatestDecisionOfReview(ctx context.Context, reviewID int64) (ReviewDecision, error) {
-	row := q.db.QueryRowContext(ctx, loadLatestDecisionOfReview, reviewID)
+	row := q.db.QueryRow(ctx, loadLatestDecisionOfReview, reviewID)
 	var i ReviewDecision
 	err := row.Scan(
 		&i.ID,
@@ -509,11 +516,11 @@ SELECT id, created, updated, name, lat, lon, osm_type, osm_id, n_likes, n_dislik
 FROM
     place
 WHERE
-    id = ?
+    id = $1
 `
 
 func (q *Queries) LoadPlace(ctx context.Context, id int64) (Place, error) {
-	row := q.db.QueryRowContext(ctx, loadPlace, id)
+	row := q.db.QueryRow(ctx, loadPlace, id)
 	var i Place
 	err := row.Scan(
 		&i.ID,
@@ -538,11 +545,11 @@ const loadReview = `-- name: LoadReview :one
 SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 FROM review
 WHERE
-    id = ?
+    id = $1
 `
 
 func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
-	row := q.db.QueryRowContext(ctx, loadReview, id)
+	row := q.db.QueryRow(ctx, loadReview, id)
 	var i Review
 	err := row.Scan(
 		&i.ID,
@@ -565,26 +572,32 @@ func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
 const unlikeReview = `-- name: UnlikeReview :exec
 DELETE FROM review_like
 WHERE
-    review_id = ?
-    AND user_id = ?
+    review_id = $1
+    AND user_id = $2
 `
 
 func (q *Queries) UnlikeReview(ctx context.Context, reviewID int64, userID int64) error {
-	_, err := q.db.ExecContext(ctx, unlikeReview, reviewID, userID)
+	_, err := q.db.Exec(ctx, unlikeReview, reviewID, userID)
 	return err
 }
 
 const updateReview = `-- name: UpdateReview :one
 UPDATE review SET
-    liked = ?,
-    comment = ?
+    liked = $1,
+    "comment" = $2,
+    updated = $4
 WHERE
-    id = ?
+    id = $3
 RETURNING id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 `
 
-func (q *Queries) UpdateReview(ctx context.Context, liked bool, comment sql.NullString, iD int64) (Review, error) {
-	row := q.db.QueryRowContext(ctx, updateReview, liked, comment, iD)
+func (q *Queries) UpdateReview(ctx context.Context, liked bool, comment *string, iD int64, asOf time.Time) (Review, error) {
+	row := q.db.QueryRow(ctx, updateReview,
+		liked,
+		comment,
+		iD,
+		asOf,
+	)
 	var i Review
 	err := row.Scan(
 		&i.ID,

@@ -2,9 +2,10 @@ package method
 
 import (
 	"context"
-	"database/sql"
 
+	"codeberg.org/socialmaps/api/internal/mytime"
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/jackc/pgx/v5"
 )
 
 type LikeReview struct {
@@ -20,7 +21,7 @@ func (m *LikeReview) Execute(ctx context.Context, args *likeReviewArgs) (*struct
 
 	rvw, err := m.QS.LoadReview(ctx, args.ReviewID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return nil, huma.Error404NotFound("review not found")
 		}
 		return nil, err
@@ -31,7 +32,7 @@ func (m *LikeReview) Execute(ctx context.Context, args *likeReviewArgs) (*struct
 		return nil, huma.Error403Forbidden("cannot like yours")
 	}
 
-	err = m.QS.LikeReview(ctx, args.ReviewID, usr.ID)
+	err = m.QS.LikeReview(ctx, args.ReviewID, usr.ID, mytime.Now())
 	if err != nil {
 		return nil, err
 	}

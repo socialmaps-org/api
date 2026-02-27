@@ -2,6 +2,12 @@ when:
   branch: main
   event: [push, pull_request, manual]
 
+services:
+  - name: postgres
+    image: postgres:18.3-trixie
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+
 steps:
   - name: check-scripts
     image: koalaman/shellcheck-alpine:latest
@@ -9,20 +15,20 @@ steps:
       - ./scripts/check-scripts.sh
 
   - name: check-format
-    image: golang:1.25.4-trixie
+    image: golang:1.26.0-trixie
     commands:
       - ./scripts/check-format.sh
     depends_on: [check-scripts]
 
   - name: check-deadcode
-    image: golang:1.25.4-trixie
+    image: golang:1.26.0-trixie
     commands:
       - go install golang.org/x/tools/cmd/deadcode@latest
       - ./scripts/check-deadcode.sh
     depends_on: [check-scripts]
 
   - name: lint
-    image: golang:1.25.4-trixie
+    image: golang:1.26.0-trixie
     commands:
       - go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
       - ./scripts/lint.sh
@@ -34,34 +40,63 @@ steps:
       - ./scripts/lint-sql.sh
     depends_on: [check-scripts]
 
+  - name: test-schema
+    image: postgres:18.3-trixie
+    commands:
+      - ./scripts/test-schema.sh
+    environment:
+      PG_HOST: postgres
+    depends_on: [lint-sql]
+
+  - name: init-db
+    image: postgres:18.3-trixie
+    commands:
+      - ./scripts/init-db.sh
+    environment:
+       PG_HOST: postgres
+    depends_on: [test-schema]
+
   - name: test
-    image: golang:1.25.4-trixie
+    image: golang:1.26.0-trixie
     commands:
       - make
       - ./scripts/test.sh
-    depends_on: [check-scripts, check-format, check-deadcode, lint, lint-sql]
+    environment:
+      DATABASE_DSN: 'postgres://socialmaps_api@postgres:5432/socialmaps'
+    depends_on: [check-scripts, check-format, check-deadcode, lint, init-db]
 
   - name: publish-dryrun
-    image: 'woodpeckerci/plugin-docker-buildx:6.0.3'
+    image: codeberg.org/woodpecker-plugins/docker-buildx:6.0.3
     settings:
       platforms: linux/amd64
+      logins:
+        - registry:
+          username:
+            from_secret: dh_username
+          password:
+            from_secret: dh_password
       dry-run: true
     depends_on: [test]
     when:
       - event: [pull_request, manual]
 
   - name: publish
-    image: 'woodpeckerci/plugin-docker-buildx:6.0.3'
+    image: codeberg.org/woodpecker-plugins/docker-buildx:6.0.3
     settings:
       repo: codeberg.org/socialmaps/api
       platforms: linux/amd64
-      auto_tag: true
       logins:
+        - registry:
+          username:
+            from_secret: dh_username
+          password:
+            from_secret: dh_password
         - registry: https://codeberg.org
           username:
             from_secret: cb_username
           password:
             from_secret: cb_password
+      auto_tag: true
     depends_on: [test]
     when:
       - event: [push, manual]

@@ -1,7 +1,6 @@
 package method
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,16 +13,18 @@ import (
 	"codeberg.org/socialmaps/api/internal/j"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
+	"codeberg.org/socialmaps/api/internal/mytime"
 )
 
 func TestUpdateReviewAuthorizationMissing(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, sql.NullString{String: "I liked it!", Valid: true}))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I liked it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")
@@ -46,7 +47,7 @@ func TestUpdateReviewAuthorizationMissing(t *testing.T) {
 
 func TestUpdateReviewMissingReview(t *testing.T) {
 	// Arrange
-	qs := model.New(database.Open(":memory:"))
+	qs := model.New(database.OpenInTest(t))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")
@@ -72,12 +73,13 @@ func TestUpdateReviewMissingReview(t *testing.T) {
 func TestUpdateReviewCommentAndDislike(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, sql.NullString{String: "I liked it!", Valid: true}))
-	must.Get(qs.CreateReviewDecision(ctx, rvw.ID, "test-mod", true, ""))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I liked it!"), mytime.Now()))
+	must.Get(qs.CreateReviewDecision(ctx, now, rvw.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")
@@ -109,20 +111,21 @@ func TestUpdateReviewCommentAndDislike(t *testing.T) {
 	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.False(t, rvwM.Liked)
-	require.Equal(t, "I didn't like it!", rvwM.Comment.String)
-	require.False(t, rvwM.LastDecisionApproved.Valid)
-	require.False(t, rvwM.LastDecisionBy.Valid)
+	require.Equal(t, "I didn't like it!", *rvwM.Comment)
+	require.Nil(t, rvwM.LastDecisionApproved)
+	require.Nil(t, rvwM.LastDecisionBy)
 }
 
 func TestUpdateReviewCommentAndLike(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, sql.NullString{String: "I didn't like it!", Valid: true}))
-	must.Get(qs.CreateReviewDecision(ctx, rvw.ID, "test-mod", true, ""))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, new("I didn't like it!"), mytime.Now()))
+	must.Get(qs.CreateReviewDecision(ctx, now, rvw.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")
@@ -154,20 +157,21 @@ func TestUpdateReviewCommentAndLike(t *testing.T) {
 	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.True(t, rvwM.Liked)
-	require.Equal(t, "I liked it!", rvwM.Comment.String)
-	require.False(t, rvwM.LastDecisionApproved.Valid)
-	require.False(t, rvwM.LastDecisionBy.Valid)
+	require.Equal(t, "I liked it!", *rvwM.Comment)
+	require.Nil(t, rvwM.LastDecisionApproved)
+	require.Nil(t, rvwM.LastDecisionBy)
 }
 
 func TestUpdateReviewCommentOnly(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, sql.NullString{String: "I liked it!", Valid: true}))
-	must.Get(qs.CreateReviewDecision(ctx, rvw.ID, "test-mod", true, ""))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, new("I liked it!"), mytime.Now()))
+	must.Get(qs.CreateReviewDecision(ctx, now, rvw.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")
@@ -199,19 +203,20 @@ func TestUpdateReviewCommentOnly(t *testing.T) {
 	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.False(t, rvwM.Liked)
-	require.Equal(t, "I didn't like it!", rvwM.Comment.String)
-	require.False(t, rvwM.LastDecisionApproved.Valid)
-	require.False(t, rvwM.LastDecisionBy.Valid)
+	require.Equal(t, "I didn't like it!", *rvwM.Comment)
+	require.Nil(t, rvwM.LastDecisionApproved)
+	require.Nil(t, rvwM.LastDecisionBy)
 }
 
 func TestUpdateReviewLikeOnly(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, sql.NullString{String: "I liked it!", Valid: true}))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, new("I liked it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")
@@ -243,17 +248,18 @@ func TestUpdateReviewLikeOnly(t *testing.T) {
 	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.True(t, rvwM.Liked)
-	require.Equal(t, "I liked it!", rvwM.Comment.String)
+	require.Equal(t, "I liked it!", *rvwM.Comment)
 }
 
 func TestUpdateReviewDislikeOnly(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, sql.NullString{String: "I didn't like it!", Valid: true}))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I didn't like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")
@@ -285,5 +291,5 @@ func TestUpdateReviewDislikeOnly(t *testing.T) {
 	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.False(t, rvwM.Liked)
-	require.Equal(t, "I didn't like it!", rvwM.Comment.String)
+	require.Equal(t, "I didn't like it!", *rvwM.Comment)
 }

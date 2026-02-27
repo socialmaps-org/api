@@ -9,14 +9,15 @@ import (
 )
 
 func Producer(ctx context.Context, qs *model.Queries, ch chan<- model.Review) {
-	nextID, nextCreated := int64(-1), int64(-1)
+	nextID := int64(-1)
+	nextCreated := time.Unix(0, 0)
 
 	for {
 		nextID, nextCreated = produce(ctx, qs, ch, nextID, nextCreated)
 	}
 }
 
-func produce(ctx context.Context, qs *model.Queries, ch chan<- model.Review, nextID, nextCreated int64) (int64, int64) {
+func produce(ctx context.Context, qs *model.Queries, ch chan<- model.Review, nextID int64, nextCreated time.Time) (int64, time.Time) {
 	reviews, err := qs.ListEarliestUnapprovedReviews(ctx, nextCreated, nextID, 100)
 	if err != nil {
 		slog.ErrorContext(ctx, "CANONICAL-MODERATION-PRODUCER-LINE",

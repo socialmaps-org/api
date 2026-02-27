@@ -5,9 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	env "github.com/caarlos0/env/v11"
-
 	"codeberg.org/socialmaps/api/internal/database"
+	"codeberg.org/socialmaps/api/internal/env"
 	"codeberg.org/socialmaps/api/internal/method"
 	"codeberg.org/socialmaps/api/internal/mistral"
 	"codeberg.org/socialmaps/api/internal/model"
@@ -16,40 +15,26 @@ import (
 )
 
 func main() {
-	var envvars struct {
-		OAuth2IntrospectURL string `env:"OAUTH2_INTROSPECT_URL"`
-		OAuth2ClientID      string `env:"OAUTH2_CLIENT_ID" envDefault:"org.socialmaps.api"`
-		OAuth2ClientSecret  string `env:"OAUTH2_CLIENT_SECRET"`
-		MistralSecret       string `env:"MISTRAL_SECRET"`
-		DatabaseDSN         string `env:"DATABASE_DSN" envDefault:"socialmaps-api.sqlite3"`
-		ListenAddr          string `env:"LISTEN_ADDR" envDefault:"127.0.0.1:8080"`
-		NominatimEndpoint   string `env:"NOMINATIM_ENDPOINT" envDefault:"https://nominatim.openstreetmap.org"`
-	}
-	err := env.Parse(&envvars)
-	if err != nil {
-		panic(err)
-	}
-
-	db := database.Open(envvars.DatabaseDSN)
+	db := database.Open(env.Var.DatabaseDSN)
 	defer db.Close()
 	qs := model.New(db)
 
 	// Start the background jobs
 	ctx := context.Background()
-	mod := moderation.NewMistralLarge2512v1(mistral.NewClient(envvars.MistralSecret))
+	mod := moderation.NewMistralLarge2512v1(mistral.NewClient(env.Var.MistralSecret))
 	go moderation.Process(ctx, qs, mod)
 
 	// Run the API server
 	authr := web.NewAuthenticator(
-		envvars.OAuth2IntrospectURL,
-		envvars.OAuth2ClientID,
-		envvars.OAuth2ClientSecret,
+		env.Var.OAuth2IntrospectURL,
+		env.Var.OAuth2ClientID,
+		env.Var.OAuth2ClientSecret,
 	)
 
-	mux := method.Mux(authr, qs, envvars.NominatimEndpoint)
+	mux := method.Mux(authr, qs, env.Var.NominatimEndpoint)
 
-	slog.Info("LISTENING", "listen_addr", envvars.ListenAddr)
-	err = http.ListenAndServe(envvars.ListenAddr, mux)
+	slog.Info("LISTENING", "listen_addr", env.Var.ListenAddr)
+	err := http.ListenAndServe(env.Var.ListenAddr, mux)
 	if err != nil && err != http.ErrServerClosed {
 		panic(err)
 	}

@@ -12,14 +12,15 @@ import (
 	"codeberg.org/socialmaps/api/internal/j"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
+	"codeberg.org/socialmaps/api/internal/mytime"
 )
 
 func TestRetrieveExisting(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	qs := model.New(database.Open(":memory:"))
-	plcM := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	qs := model.New(database.OpenInTest(t))
+	plcM := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")
@@ -42,7 +43,7 @@ func TestRetrieveExisting(t *testing.T) {
 
 func TestRetrieveMissing(t *testing.T) {
 	// Arrange
-	qs := model.New(database.Open(":memory:"))
+	qs := model.New(database.OpenInTest(t))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")

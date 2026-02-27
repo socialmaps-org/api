@@ -7,14 +7,14 @@ import (
 
 func Review(m model.Review) resource.Review {
 	var comment string
-	if m.Comment.Valid {
-		comment = m.Comment.String
+	if m.Comment != nil {
+		comment = *m.Comment
 	}
 
 	return resource.Review{
 		Object:  "review",
 		ID:      m.ID,
-		Created: m.Created,
+		Created: m.Created.Unix(),
 		Place: resource.PlaceStub{
 			ID: m.PlaceID,
 		},

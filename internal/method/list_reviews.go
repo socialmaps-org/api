@@ -2,11 +2,12 @@ package method
 
 import (
 	"context"
-	"database/sql"
 	"math"
+	"time"
 
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
+	"github.com/jackc/pgx/v5"
 )
 
 type ListReviews struct {
@@ -28,10 +29,10 @@ func (m *ListReviews) Execute(ctx context.Context, args *listReviewsArgs) (*Resp
 	var rvwRs []resource.ReviewWithUser
 	if args.FirstCreated != 0 {
 		results, err := m.QS.ListLatestApprovedReviewsOfPlaceReverse(
-			ctx, args.PlaceID, args.FirstCreated, args.FirstID, args.Limit,
+			ctx, args.PlaceID, float64(args.FirstCreated), args.FirstID, args.Limit,
 		)
 
-		if err != nil && err != sql.ErrNoRows {
+		if err != nil && err != pgx.ErrNoRows {
 			return nil, err
 		}
 
@@ -42,16 +43,16 @@ func (m *ListReviews) Execute(ctx context.Context, args *listReviewsArgs) (*Resp
 	} else {
 		var lastCreated, lastID int64
 		if args.LastCreated == 0 {
-			lastCreated, lastID = math.MaxInt64, math.MaxInt64
+			lastCreated, lastID = time.Date(3000, 12, 31, 0, 0, 0, 0, time.UTC).Unix(), math.MaxInt64
 		} else {
 			lastCreated, lastID = args.LastCreated, args.LastID
 		}
 
 		results, err := m.QS.ListLatestApprovedReviewsOfPlace(
-			ctx, args.PlaceID, lastCreated, lastID, args.Limit,
+			ctx, args.PlaceID, float64(lastCreated), lastID, args.Limit,
 		)
 
-		if err != nil && err != sql.ErrNoRows {
+		if err != nil && err != pgx.ErrNoRows {
 			return nil, err
 		}
 

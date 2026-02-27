@@ -13,14 +13,14 @@ import (
 	"codeberg.org/socialmaps/api/internal/j"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
+	"codeberg.org/socialmaps/api/internal/mytime"
 )
 
 func TestCreateReviewAuthorizationMissing(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
-
-	qs := model.New(database.Open(":memory:"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	qs := model.New(database.OpenInTest(t))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")
@@ -43,7 +43,7 @@ func TestCreateReviewAuthorizationMissing(t *testing.T) {
 
 func TestCreateReviewMissingPlace(t *testing.T) {
 	// Arrange
-	qs := model.New(database.Open(":memory:"))
+	qs := model.New(database.OpenInTest(t))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")
@@ -70,8 +70,8 @@ func TestCreateReview(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	qs := model.New(database.Open(":memory:"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	qs := model.New(database.OpenInTest(t))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")
@@ -103,5 +103,5 @@ func TestCreateReview(t *testing.T) {
 	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
 	require.True(t, rvwM.Liked)
-	require.Equal(t, "I liked it!", rvwM.Comment.String)
+	require.Equal(t, "I liked it!", *rvwM.Comment)
 }

@@ -13,6 +13,7 @@ import (
 	"codeberg.org/socialmaps/api/internal/j"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
+	"codeberg.org/socialmaps/api/internal/mytime"
 )
 
 const nominatimDoc = `
@@ -41,7 +42,7 @@ func TestLookupNew(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	qs := model.New(database.Open(":memory:"))
+	qs := model.New(database.OpenInTest(t))
 
 	nominatimSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/search", r.URL.Path)
@@ -91,9 +92,9 @@ func TestLookupExisting(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
-	qs := model.New(database.Open(":memory:"))
+	qs := model.New(database.OpenInTest(t))
 
-	must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
+	must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")

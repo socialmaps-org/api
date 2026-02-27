@@ -5,13 +5,15 @@
 package model
 
 import (
-	"database/sql"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Place struct {
 	ID           int64
-	Created      int64
-	Updated      int64
+	Created      time.Time
+	Updated      time.Time
 	Name         string
 	Lat          float64
 	Lon          float64
@@ -21,29 +23,29 @@ type Place struct {
 	NDislikes    int64
 	DecNLikes    float64
 	DecNDislikes float64
-	DecUpdatedAt int64
+	DecUpdatedAt time.Time
 	Score        float64
 }
 
 type Review struct {
 	ID                   int64
-	Created              int64
-	Updated              int64
+	Created              time.Time
+	Updated              time.Time
 	PlaceID              int64
 	UserID               int64
 	Liked                bool
-	Comment              sql.NullString
+	Comment              *string
 	NLikes               int64
 	DecNLikes            float64
-	DecUpdatedAt         int64
-	LastDecisionAt       sql.NullInt64
-	LastDecisionBy       sql.NullString
-	LastDecisionApproved sql.NullBool
+	DecUpdatedAt         time.Time
+	LastDecisionAt       pgtype.Timestamptz
+	LastDecisionBy       *string
+	LastDecisionApproved *bool
 }
 
 type ReviewDecision struct {
 	ID        int64
-	Created   int64
+	Created   time.Time
 	ReviewID  int64
 	Moderator string
 	Approved  bool
@@ -52,14 +54,14 @@ type ReviewDecision struct {
 
 type ReviewLike struct {
 	ID       int64
-	Created  int64
+	Created  time.Time
 	ReviewID int64
 	UserID   int64
 }
 
 type User struct {
 	ID          int64
-	Created     int64
-	Updated     int64
+	Created     time.Time
+	Updated     time.Time
 	DisplayName string
 }

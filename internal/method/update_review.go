@@ -2,15 +2,16 @@ package method
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"net/http"
 	"reflect"
 	"time"
 
+	"codeberg.org/socialmaps/api/internal/mytime"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/jackc/pgx/v5"
 )
 
 type UpdateReview struct {
@@ -33,15 +34,16 @@ func (updateReviewBodyArg) Schema(r huma.Registry) *huma.Schema {
 	return huma.SchemaFromType(r, reflect.TypeOf(raw{}))
 }
 
-// 1 hour
-const maxDelayInSec = 1 * 60 * 60
+const maxDelay = 1 * time.Hour
 
 func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*DynamicResponse[resource.Review], error) {
 	usr := GetAuthUser(ctx)
 
+	now := mytime.Now()
+
 	rvwM, err := m.QS.LoadReview(ctx, args.ReviewID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return nil, huma.Error404NotFound("review not found")
 		}
 		return nil, err
@@ -52,25 +54,25 @@ func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Dy
 		return nil, huma.Error403Forbidden("not your review")
 	}
 
-	if time.Now().Unix()-rvwM.Created > maxDelayInSec {
+	if now.Sub(rvwM.Created) > maxDelay {
 		return nil, huma.Error400BadRequest("too late")
 	}
 
 	var status int
-	if (args.Body.Comment == "" && !rvwM.Comment.Valid) || rvwM.Comment.String == args.Body.Comment {
+	if (args.Body.Comment == "" && rvwM.Comment == nil) || *rvwM.Comment == args.Body.Comment {
 		status = http.StatusOK
 	} else {
 		status = http.StatusAccepted
 	}
 
-	var comment sql.NullString
+	var comment *string
 	if args.Body.Comment != "" {
-		comment = sql.NullString{String: args.Body.Comment, Valid: true}
+		comment = &args.Body.Comment
 	} else {
-		comment = sql.NullString{Valid: false}
+		comment = nil
 	}
 
-	rvwM, err = m.QS.UpdateReview(ctx, args.Body.Liked, comment, rvwM.ID)
+	rvwM, err = m.QS.UpdateReview(ctx, args.Body.Liked, comment, rvwM.ID, now)
 	if err != nil {
 		return nil, err
 	}

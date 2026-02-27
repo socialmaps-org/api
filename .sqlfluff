@@ -1,6 +1,16 @@
 [sqlfluff]
-dialect = sqlite
+dialect = postgres
+templater = placeholder
 
 # We exclude `ambiguous.column_count` because we're using sqlc and `SELECT *` is
 # not ambiguous to sqlc because it knows the database schema.
 exclude_rules = ambiguous.column_count
+
+[sqlfluff:rules:references.quoting]
+# Require every keyword used as an identifier to be quoted.
+# See <https://www.postgresql.org/docs/18/sql-keywords-appendix.html> for the
+# list of keywords.
+prefer_quoted_keywords = True
+
+[sqlfluff:templater:placeholder]
+param_regex = @(?P<param_name>\w+)

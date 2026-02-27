@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/mytime"
 )
 
 func Consumer(ctx context.Context, qs *model.Queries, mod Moderator, ch <-chan model.Review) {
@@ -16,11 +17,11 @@ func Consumer(ctx context.Context, qs *model.Queries, mod Moderator, ch <-chan m
 func consume(ctx context.Context, qs *model.Queries, mod Moderator, ch <-chan model.Review) {
 	rvw := <-ch
 
-	if !rvw.Comment.Valid {
+	if rvw.Comment == nil {
 		return
 	}
 
-	dec, err := mod.Moderate(rvw.Comment.String)
+	dec, err := mod.Moderate(*rvw.Comment)
 	if err != nil {
 		slog.ErrorContext(ctx, "CANONICAL-MODERATION-CONSUMER-LINE",
 			"review", rvw.ID,
@@ -29,7 +30,7 @@ func consume(ctx context.Context, qs *model.Queries, mod Moderator, ch <-chan mo
 		)
 	}
 
-	decM, err := qs.CreateReviewDecision(ctx, rvw.ID, mod.ID(), dec.Approved, dec.Details)
+	decM, err := qs.CreateReviewDecision(ctx, mytime.Now(), rvw.ID, mod.ID(), dec.Approved, dec.Details)
 	if err != nil {
 		slog.ErrorContext(ctx, "CANONICAL-MODERATION-CONSUMER-LINE",
 			"review", rvw.ID,

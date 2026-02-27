@@ -1,66 +1,36 @@
 package database
 
 import (
-	"database/sql"
-	_ "embed"
-	"log"
+	"context"
+	"testing"
 
-	"codeberg.org/socialmaps/api/internal/mytime"
-	"github.com/mattn/go-sqlite3"
+	"codeberg.org/socialmaps/api/internal/env"
+	"codeberg.org/socialmaps/api/internal/must"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-//go:embed "migrations/000 - initial schema.sql"
-var migration0 string
-
-func init() {
-	sql.Register("sqlite3_extended", &sqlite3.SQLiteDriver{
-		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-			return conn.RegisterFunc("my_unixepoch", func() int64 {
-				return mytime.Now().Unix()
-			}, false)
-		},
-	})
-}
-
-func Open(dataSourceName string) *sql.DB {
-	db, err := sql.Open("sqlite3_extended", dataSourceName)
+func Open(dataSourceName string) *pgxpool.Pool {
+	ctx := context.Background()
+	db, err := pgxpool.New(ctx, dataSourceName)
 	if err != nil {
 		panic(err)
 	}
 
-	initialize(db)
+	err = db.Ping(ctx)
+	if err != nil {
+		panic(err)
+	}
 
 	return db
 }
 
-func initialize(db *sql.DB) {
-	row := db.QueryRow("PRAGMA user_version;")
-	var userVersion int
-	row.Scan(&userVersion)
-
-	tx, err := db.Begin()
-	if err != nil {
-		panic(err)
-	}
-
-	switch userVersion {
-	case 0:
-		log.Println("upgrading database schema 0 -> 1")
-
-		_, err = tx.Exec(migration0)
-		if err != nil {
-			panic(err)
-		}
-
-		fallthrough
-	case 1:
-		log.Println("database has the latest schema")
-	}
-
-	tx.Exec("PRAGMA foreign_keys = ON;")
-
-	err = tx.Commit()
-	if err != nil {
-		panic(err)
-	}
+func OpenInTest(t *testing.T) pgx.Tx {
+	ctx := t.Context()
+	pool := Open(env.Var.DatabaseDSN)
+	tx := must.Get(pool.Begin(ctx))
+	t.Cleanup(func() {
+		tx.Rollback(ctx)
+	})
+	return tx
 }

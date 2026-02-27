@@ -1,16 +1,17 @@
 package method
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/require"
 
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
+	"codeberg.org/socialmaps/api/internal/mytime"
 )
 
 // TestDeleteReviewAuthorizationMissing tests that one cannot call the endpoint
@@ -18,11 +19,12 @@ import (
 func TestDeleteReviewAuthorizationMissing(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, sql.NullString{String: "I like it!", Valid: true}))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")
@@ -45,11 +47,12 @@ func TestDeleteReviewAuthorizationMissing(t *testing.T) {
 func TestDeleteReviewAuthorizationInactive(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, sql.NullString{String: "I like it!", Valid: true}))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")
@@ -72,12 +75,13 @@ func TestDeleteReviewAuthorizationInactive(t *testing.T) {
 func TestDeleteReviewOthers(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
-	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: true}))
+	qs := model.New(database.OpenInTest(t))
+	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID))
 	srv := NewTestServer(t, authr, qs, "")
@@ -102,11 +106,12 @@ func TestDeleteReviewOthers(t *testing.T) {
 func TestDeleteReview(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, sql.NullString{String: "I like it!", Valid: true}))
+	qs := model.New(database.OpenInTest(t))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usr.ID))
 	srv := NewTestServer(t, authr, qs, "")
@@ -124,5 +129,5 @@ func TestDeleteReview(t *testing.T) {
 
 	require.Equal(t, http.StatusNoContent, res.StatusCode)
 	rvw, err = qs.LoadReview(ctx, rvw.ID)
-	require.Equal(t, sql.ErrNoRows, err)
+	require.Equal(t, pgx.ErrNoRows, err)
 }

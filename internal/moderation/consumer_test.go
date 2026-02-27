@@ -1,7 +1,6 @@
 package moderation
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,11 +10,15 @@ import (
 	"codeberg.org/socialmaps/api/internal/mistral"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
+	"codeberg.org/socialmaps/api/internal/mytime"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConsume(t *testing.T) {
 	// Arrange
+	ctx := t.Context()
+	now := mytime.Now()
+
 	mistralSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v1/chat/completions", r.URL.Path)
 
@@ -62,13 +65,11 @@ func TestConsume(t *testing.T) {
 	}))
 	t.Cleanup(mistralSrv.Close)
 
-	ctx := t.Context()
-
-	db := database.Open(":memory:")
+	db := database.OpenInTest(t)
 	qs := model.New(db)
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	usr := must.Get(qs.CreateUser(ctx, 1, "Steve"))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, sql.NullString{String: "great little cafe!", Valid: true}))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("great little cafe!"), mytime.Now()))
 
 	mod := &MistralLarge2512v1{
 		Client: mistral.Client{

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/mytime"
 	"codeberg.org/socialmaps/api/internal/web"
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -72,7 +73,7 @@ func GetAuthMiddleware(
 			return
 		}
 
-		usr, err := qs.CreateUser(ctx.Context(), osmID, authn.Username)
+		usr, err := qs.CreateUser(ctx.Context(), mytime.Now(), osmID, authn.Username)
 		if err != nil {
 			slog.Info("CANONICAL-AUTH-LINE",
 				"status", "error",

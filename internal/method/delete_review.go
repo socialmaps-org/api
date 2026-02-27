@@ -2,9 +2,9 @@ package method
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/jackc/pgx/v5"
 )
 
 type DeleteReview struct {
@@ -20,7 +20,7 @@ func (m *DeleteReview) Execute(ctx context.Context, args *deleteReviewArgs) (*st
 
 	rvw, err := m.QS.LoadReview(ctx, args.ReviewID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return nil, huma.Error404NotFound("review not found")
 		}
 		return nil, err

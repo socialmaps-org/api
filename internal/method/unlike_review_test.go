@@ -1,8 +1,8 @@
 package method
 
 import (
-	"database/sql"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 
@@ -11,18 +11,20 @@ import (
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/must"
+	"codeberg.org/socialmaps/api/internal/mytime"
 )
 
 func TestUnlikeReviewAuthorizationMissing(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
-	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
-	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
+	qs := model.New(database.OpenInTest(t))
+	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")
@@ -46,13 +48,14 @@ func TestUnlikeReviewAuthorizationMissing(t *testing.T) {
 func TestUnlikeReviewAuthorizationInactive(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
-	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
-	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
+	qs := model.New(database.OpenInTest(t))
+	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")
@@ -77,14 +80,15 @@ func TestUnlikeReviewAuthorizationInactive(t *testing.T) {
 func TestUnlikeReviewOthers(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
-	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
-	usrC := must.Get(qs.CreateUser(ctx, 3, "Charlie"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
-	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
+	qs := model.New(database.OpenInTest(t))
+	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
+	usrC := must.Get(qs.CreateUser(ctx, now, 3, "Charlie"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrC.ID))
 	srv := NewTestServer(t, authr, qs, "")
@@ -109,13 +113,14 @@ func TestUnlikeReviewOthers(t *testing.T) {
 func TestUnlikeReview(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
-	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
-	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
+	qs := model.New(database.OpenInTest(t))
+	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID))
 	srv := NewTestServer(t, authr, qs, "")
@@ -131,7 +136,7 @@ func TestUnlikeReview(t *testing.T) {
 	// Assert
 	require.Equal(t, 1, authr.nIntrospectCalls)
 
-	require.Equal(t, http.StatusNoContent, res.StatusCode)
+	require.Equal(t, http.StatusNoContent, res.StatusCode, string(must.Get(io.ReadAll(res.Body))))
 
 	rvw = must.Get(qs.LoadReview(ctx, rvw.ID))
 	require.Zero(t, rvw.NLikes)
@@ -140,13 +145,14 @@ func TestUnlikeReview(t *testing.T) {
 func TestUnlikeReviewIdempotent(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
+	now := mytime.Now()
 
-	qs := model.New(database.Open(":memory:"))
-	usrA := must.Get(qs.CreateUser(ctx, 1, "Alice"))
-	usrB := must.Get(qs.CreateUser(ctx, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, sql.NullString{String: "I like it!", Valid: false}))
-	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID))
+	qs := model.New(database.OpenInTest(t))
+	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
+	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID), fmt.Sprint(usrB.ID))
 	srv := NewTestServer(t, authr, qs, "")

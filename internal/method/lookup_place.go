@@ -2,17 +2,18 @@ package method
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log/slog"
 
 	"codeberg.org/socialmaps/api/internal/fun"
 	"codeberg.org/socialmaps/api/internal/geo"
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/mytime"
 	"codeberg.org/socialmaps/api/internal/name"
 	"codeberg.org/socialmaps/api/internal/nominatim"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
+	"github.com/jackc/pgx/v5"
 )
 
 type LookupPlace struct {
@@ -33,7 +34,7 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 	)
 
 	places, err := m.QS.ListPlacesByCoord(ctx, bbox.South, bbox.North, bbox.West, bbox.East)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && err != pgx.ErrNoRows {
 		return nil, err
 	}
 
@@ -80,7 +81,7 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 
 	plcN := nomCandidates[0]
 
-	plcM, err := m.QS.CreatePlace(ctx, plcN.Name, plcN.Lat, plcN.Lon, plcN.Type, plcN.ID)
+	plcM, err := m.QS.CreatePlace(ctx, plcN.Name, plcN.Lat, plcN.Lon, plcN.Type, plcN.ID, mytime.Now())
 	if err != nil {
 		return nil, err
 	}
