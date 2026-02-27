@@ -9,10 +9,16 @@ services:
       POSTGRES_HOST_AUTH_METHOD: trust
 
 steps:
+  - name: lint-ci
+    image: docker.io/woodpeckerci/woodpecker-cli:v3.13.0-alpine
+    commands:
+      - ./scripts/lint-ci.sh
+
   - name: check-scripts
     image: docker.io/koalaman/shellcheck-alpine:v0.11.0
     commands:
       - ./scripts/check-scripts.sh
+    depends_on: [lint-ci]
 
   - name: check-format
     image: docker.io/golang:1.26.0-trixie
