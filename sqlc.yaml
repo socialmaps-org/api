@@ -14,6 +14,12 @@ sql:
         query_parameter_limit: 1000
         emit_pointers_for_null_types: true
 
+        rename:
+          socialmaps_user: User
+          socialmaps_place: Place
+          socialmaps_review: Review
+          socialmaps_review_decision: ReviewDecision
+          socialmaps_review_like: ReviewLike
         overrides:
           - db_type: "pg_catalog.timestamptz"
             go_type:

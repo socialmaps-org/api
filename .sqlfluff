@@ -2,6 +2,8 @@
 dialect = postgres
 templater = placeholder
 
+max_line_length = 120
+
 # We exclude `ambiguous.column_count` because we're using sqlc and `SELECT *` is
 # not ambiguous to sqlc because it knows the database schema.
 exclude_rules = ambiguous.column_count

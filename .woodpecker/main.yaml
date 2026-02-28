@@ -4,7 +4,7 @@ when:
 
 services:
   - name: postgres
-    image: docker.io/postgres:18.3-trixie
+    image: docker.io/postgis/postgis:18-3.6
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
 
@@ -53,7 +53,7 @@ steps:
     depends_on: [check-scripts]
 
   - name: test-schema
-    image: docker.io/postgres:18.3-trixie
+    image: docker.io/postgis/postgis:18-3.6
     commands:
       - ./scripts/test-schema.sh
     environment:
@@ -61,9 +61,17 @@ steps:
     depends_on: [lint-sql]
 
   - name: init-db
-    image: docker.io/postgres:18.3-trixie
+    image: docker.io/postgis/postgis:18-3.6
     commands:
       - ./scripts/init-db.sh
+    environment:
+       PG_HOST: postgres
+    depends_on: [test-schema]
+
+  - name: import-osm
+    image: docker.io/iboates/osm2pgsql:2.2.0
+    commands:
+      - ./scripts/import-osm.sh
     environment:
        PG_HOST: postgres
     depends_on: [test-schema]

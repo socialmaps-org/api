@@ -11,7 +11,7 @@ import (
 )
 
 const createPlace = `-- name: CreatePlace :one
-INSERT INTO place (
+INSERT INTO socialmaps.place (
     "name",
     lat,
     lon,
@@ -64,7 +64,7 @@ func (q *Queries) CreatePlace(ctx context.Context, name string, lat float64, lon
 }
 
 const createReview = `-- name: CreateReview :one
-INSERT INTO review (
+INSERT INTO socialmaps.review (
     place_id,
     user_id,
     liked,
@@ -112,7 +112,7 @@ func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64,
 }
 
 const createReviewDecision = `-- name: CreateReviewDecision :one
-INSERT INTO review_decision (
+INSERT INTO socialmaps.review_decision (
     created,
     review_id,
     moderator,
@@ -148,7 +148,7 @@ func (q *Queries) CreateReviewDecision(ctx context.Context, asOf time.Time, revi
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO "user" (
+INSERT INTO socialmaps."user" (
     created,
     updated,
     id,
@@ -176,7 +176,7 @@ func (q *Queries) CreateUser(ctx context.Context, asOf time.Time, iD int64, disp
 }
 
 const deleteReview = `-- name: DeleteReview :exec
-DELETE FROM review
+DELETE FROM socialmaps.review
 WHERE
     id = $1
 `
@@ -187,7 +187,7 @@ func (q *Queries) DeleteReview(ctx context.Context, id int64) error {
 }
 
 const likeReview = `-- name: LikeReview :exec
-INSERT INTO review_like (
+INSERT INTO socialmaps.review_like (
     review_id,
     user_id,
     created
@@ -206,7 +206,7 @@ func (q *Queries) LikeReview(ctx context.Context, reviewID int64, userID int64, 
 
 const listEarliestUnapprovedReviews = `-- name: ListEarliestUnapprovedReviews :many
 SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
-FROM review
+FROM socialmaps.review
 WHERE
     last_decision_approved IS NULL
     AND created >= $1
@@ -254,7 +254,7 @@ func (q *Queries) ListEarliestUnapprovedReviews(ctx context.Context, lastCreated
 
 const listHottestApprovedReviewsOfPlace = `-- name: ListHottestApprovedReviewsOfPlace :many
 SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
-FROM review
+FROM socialmaps.review
 WHERE
     place_id = $1
     AND last_decision_approved
@@ -308,18 +308,18 @@ func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID
 
 const listLatestApprovedReviewsOfPlace = `-- name: ListLatestApprovedReviewsOfPlace :many
 SELECT
-    review.id, review.created, review.updated, review.place_id, review.user_id, review.liked, review.comment, review.n_likes, review.dec_n_likes, review.dec_updated_at, review.last_decision_at, review.last_decision_by, review.last_decision_approved, -- noqa
+    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.liked, rvw.comment, rvw.n_likes, rvw.dec_n_likes, rvw.dec_updated_at, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
     usr.id, usr.created, usr.updated, usr.display_name -- noqa
-FROM review
-INNER JOIN "user" AS usr ON review.user_id = usr.id
+FROM socialmaps.review AS rvw
+INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
 WHERE
-    review.place_id = $1
-    AND review.last_decision_approved
-    AND review.created <= to_timestamp($2)
-    AND review.id < $3
+    rvw.place_id = $1
+    AND rvw.last_decision_approved
+    AND rvw.created <= to_timestamp($2)
+    AND rvw.id < $3
 ORDER BY
-    review.created DESC,
-    review.id DESC
+    rvw.created DESC,
+    rvw.id DESC
 LIMIT
     $4::bigint
 `
@@ -374,18 +374,18 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 
 const listLatestApprovedReviewsOfPlaceReverse = `-- name: ListLatestApprovedReviewsOfPlaceReverse :many
 SELECT
-    review.id, review.created, review.updated, review.place_id, review.user_id, review.liked, review.comment, review.n_likes, review.dec_n_likes, review.dec_updated_at, review.last_decision_at, review.last_decision_by, review.last_decision_approved, -- noqa
+    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.liked, rvw.comment, rvw.n_likes, rvw.dec_n_likes, rvw.dec_updated_at, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
     usr.id, usr.created, usr.updated, usr.display_name -- noqa
-FROM review
-INNER JOIN "user" AS usr ON review.user_id = usr.id
+FROM socialmaps.review AS rvw
+INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
 WHERE
-    review.place_id = $1
-    AND review.last_decision_approved
-    AND review.created >= to_timestamp($2)
-    AND review.id > $3
+    rvw.place_id = $1
+    AND rvw.last_decision_approved
+    AND rvw.created >= to_timestamp($2)
+    AND rvw.id > $3
 ORDER BY
-    review.created DESC,
-    review.id DESC
+    rvw.created DESC,
+    rvw.id DESC
 LIMIT
     $4::bigint
 `
@@ -441,7 +441,7 @@ func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, p
 const listPlacesByCoord = `-- name: ListPlacesByCoord :many
 SELECT id, created, updated, name, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
 FROM
-    place
+    socialmaps.place
 WHERE
     $1 <= lat AND lat <= $2
     AND $3 <= lon AND lon <= $4
@@ -489,7 +489,7 @@ func (q *Queries) ListPlacesByCoord(ctx context.Context, latMin float64, latMax 
 
 const loadLatestDecisionOfReview = `-- name: LoadLatestDecisionOfReview :one
 SELECT id, created, review_id, moderator, approved, details
-FROM review_decision
+FROM socialmaps.review_decision
 WHERE
     review_id = $1
 ORDER BY
@@ -514,7 +514,7 @@ func (q *Queries) LoadLatestDecisionOfReview(ctx context.Context, reviewID int64
 const loadPlace = `-- name: LoadPlace :one
 SELECT id, created, updated, name, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
 FROM
-    place
+    socialmaps.place
 WHERE
     id = $1
 `
@@ -543,7 +543,7 @@ func (q *Queries) LoadPlace(ctx context.Context, id int64) (Place, error) {
 
 const loadReview = `-- name: LoadReview :one
 SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
-FROM review
+FROM socialmaps.review
 WHERE
     id = $1
 `
@@ -570,7 +570,7 @@ func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
 }
 
 const unlikeReview = `-- name: UnlikeReview :exec
-DELETE FROM review_like
+DELETE FROM socialmaps.review_like
 WHERE
     review_id = $1
     AND user_id = $2
@@ -582,7 +582,7 @@ func (q *Queries) UnlikeReview(ctx context.Context, reviewID int64, userID int64
 }
 
 const updateReview = `-- name: UpdateReview :one
-UPDATE review SET
+UPDATE socialmaps.review SET
     liked = $1,
     "comment" = $2,
     updated = $4
