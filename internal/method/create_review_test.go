@@ -20,7 +20,7 @@ func TestCreateReviewAuthorizationMissing(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 	qs := model.New(database.OpenInTest(t))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")
@@ -71,7 +71,7 @@ func TestCreateReview(t *testing.T) {
 	ctx := t.Context()
 
 	qs := model.New(database.OpenInTest(t))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, "1")
 	srv := NewTestServer(t, authr, qs, "")

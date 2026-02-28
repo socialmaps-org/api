@@ -94,7 +94,7 @@ func TestLookupExisting(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 
-	must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")

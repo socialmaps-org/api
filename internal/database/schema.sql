@@ -28,8 +28,9 @@ CREATE TABLE socialmaps.place (
     created TIMESTAMP WITH TIME ZONE NOT NULL,
     updated TIMESTAMP WITH TIME ZONE NOT NULL,
     "name" TEXT NOT NULL,
-    lat DOUBLE PRECISION NOT NULL,
-    lon DOUBLE PRECISION NOT NULL,
+    "location" "public".GEOMETRY (POINT, 4326) NOT NULL,
+    lat DOUBLE PRECISION NOT NULL GENERATED ALWAYS AS (ST_Y("location")) STORED,
+    lon DOUBLE PRECISION NOT NULL GENERATED ALWAYS AS (ST_X("location")) STORED,
     osm_type TEXT NOT NULL,
     osm_id BIGINT NOT NULL,
 
@@ -45,9 +46,7 @@ CREATE TABLE socialmaps.place (
 
     score DOUBLE PRECISION NOT NULL DEFAULT 0.5,
 
-    CONSTRAINT "name" CHECK (length("name") <= 256),
-    CONSTRAINT lat CHECK (lat BETWEEN -90 AND +90),
-    CONSTRAINT lon CHECK (lon BETWEEN -180 AND +180),
+    CONSTRAINT "name" CHECK (LENGTH("name") <= 256),
     CONSTRAINT osm_type CHECK (osm_type IN ('node', 'way', 'relation')),
     CONSTRAINT osm_id CHECK (osm_id >= 0),
     CONSTRAINT n_likes CHECK (n_likes >= 0),
@@ -60,7 +59,7 @@ CREATE TABLE socialmaps.place (
 
 CREATE UNIQUE INDEX place_osm ON socialmaps.place (osm_type, osm_id);
 
-CREATE INDEX place_coord ON socialmaps.place (lat, lon);
+CREATE INDEX place_location ON socialmaps.place USING gist ("location");
 
 CREATE TRIGGER on_update_of_immutables_on_place
 BEFORE UPDATE OF created ON socialmaps.place

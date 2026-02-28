@@ -6,13 +6,13 @@ local pois = osm2pgsql.define_table({
         { column = 'class', not_null = true },
         { column = 'subclass' },
         { column = 'tags', type = 'jsonb', not_null = true },
-        { column = 'geom', type = 'point', not_null = true },
+        { column = 'location', type = 'point', not_null = true, projection = 4326 },
 }})
 
-function process_poi(object, geom)
+function process_poi(object, location)
     local a = {
         name = object.tags.name,
-        geom = geom,
+        location = location,
         tags = object.tags
     }
 

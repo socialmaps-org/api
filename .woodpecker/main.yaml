@@ -74,7 +74,7 @@ steps:
       - ./scripts/import-osm.sh
     environment:
        PG_HOST: postgres
-    depends_on: [test-schema]
+    depends_on: [init-db]
 
   - name: test
     image: docker.io/golang:1.26.0-trixie
@@ -83,7 +83,7 @@ steps:
       - ./scripts/test.sh
     environment:
       DATABASE_DSN: 'postgres://socialmaps_api@postgres:5432/socialmaps'
-    depends_on: [check-scripts, check-format, check-deadcode, lint, init-db]
+    depends_on: [check-scripts, check-format, check-deadcode, lint, import-osm]
 
   - name: publish-dryrun
     image: codeberg.org/woodpecker-plugins/docker-buildx:6.0.3

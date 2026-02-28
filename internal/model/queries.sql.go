@@ -13,8 +13,7 @@ import (
 const createPlace = `-- name: CreatePlace :one
 INSERT INTO socialmaps.place (
     "name",
-    lat,
-    lon,
+    "location",
     osm_type,
     osm_id,
     created,
@@ -23,22 +22,21 @@ INSERT INTO socialmaps.place (
 )
 VALUES (
     $1,
-    $2,
-    $3,
+    ST_Point($2::double precision, $3::double precision, 4326),
     $4,
     $5,
     $6,
     $6,
     $6
 )
-RETURNING id, created, updated, name, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
+RETURNING id, created, updated, name, location, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
 `
 
-func (q *Queries) CreatePlace(ctx context.Context, name string, lat float64, lon float64, osmType string, osmID int64, asOf time.Time) (Place, error) {
+func (q *Queries) CreatePlace(ctx context.Context, name string, lon float64, lat float64, osmType string, osmID int64, asOf time.Time) (Place, error) {
 	row := q.db.QueryRow(ctx, createPlace,
 		name,
-		lat,
 		lon,
+		lat,
 		osmType,
 		osmID,
 		asOf,
@@ -49,6 +47,7 @@ func (q *Queries) CreatePlace(ctx context.Context, name string, lat float64, lon
 		&i.Created,
 		&i.Updated,
 		&i.Name,
+		&i.Location,
 		&i.Lat,
 		&i.Lon,
 		&i.OsmType,
@@ -439,20 +438,26 @@ func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, p
 }
 
 const listPlacesByCoord = `-- name: ListPlacesByCoord :many
-SELECT id, created, updated, name, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
+SELECT
+    id, created, updated, name, location, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
 FROM
     socialmaps.place
 WHERE
-    $1 <= lat AND lat <= $2
-    AND $3 <= lon AND lon <= $4
+    "location" && ST_MakeEnvelope(
+        $1::double precision,
+        $2::double precision,
+        $3::double precision,
+        $4::double precision,
+        4326
+    )
 `
 
-func (q *Queries) ListPlacesByCoord(ctx context.Context, latMin float64, latMax float64, lonMin float64, lonMax float64) ([]Place, error) {
+func (q *Queries) ListPlacesByCoord(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64) ([]Place, error) {
 	rows, err := q.db.Query(ctx, listPlacesByCoord,
-		latMin,
-		latMax,
 		lonMin,
+		latMin,
 		lonMax,
+		latMax,
 	)
 	if err != nil {
 		return nil, err
@@ -466,6 +471,7 @@ func (q *Queries) ListPlacesByCoord(ctx context.Context, latMin float64, latMax 
 			&i.Created,
 			&i.Updated,
 			&i.Name,
+			&i.Location,
 			&i.Lat,
 			&i.Lon,
 			&i.OsmType,
@@ -512,7 +518,7 @@ func (q *Queries) LoadLatestDecisionOfReview(ctx context.Context, reviewID int64
 }
 
 const loadPlace = `-- name: LoadPlace :one
-SELECT id, created, updated, name, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
+SELECT id, created, updated, name, location, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
 FROM
     socialmaps.place
 WHERE
@@ -527,6 +533,7 @@ func (q *Queries) LoadPlace(ctx context.Context, id int64) (Place, error) {
 		&i.Created,
 		&i.Updated,
 		&i.Name,
+		&i.Location,
 		&i.Lat,
 		&i.Lon,
 		&i.OsmType,

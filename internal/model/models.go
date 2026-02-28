@@ -15,6 +15,7 @@ type Place struct {
 	Created      time.Time
 	Updated      time.Time
 	Name         string
+	Location     interface{}
 	Lat          float64
 	Lon          float64
 	OsmType      string

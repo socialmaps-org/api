@@ -1,8 +1,7 @@
 -- name: CreatePlace :one
 INSERT INTO socialmaps.place (
     "name",
-    lat,
-    lon,
+    "location",
     osm_type,
     osm_id,
     created,
@@ -10,11 +9,10 @@ INSERT INTO socialmaps.place (
     dec_updated_at
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
+    @name,
+    ST_POINT(@lon::double precision, @lat::double precision, 4326),
+    @osm_type,
+    @osm_id,
     @as_of,
     @as_of,
     @as_of
@@ -26,8 +24,13 @@ SELECT *
 FROM
     socialmaps.place
 WHERE
-    @lat_min <= lat AND lat <= @lat_max
-    AND @lon_min <= lon AND lon <= @lon_max;
+    "location" && ST_MAKEENVELOPE(
+        @lon_min::double precision,
+        @lat_min::double precision,
+        @lon_max::double precision,
+        @lat_max::double precision,
+        4326
+    );
 
 -- name: LoadPlace :one
 SELECT *
@@ -100,7 +103,7 @@ INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
 WHERE
     rvw.place_id = @place_id
     AND rvw.last_decision_approved
-    AND rvw.created <= to_timestamp(@last_created)
+    AND rvw.created <= TO_TIMESTAMP(@last_created)
     AND rvw.id < @last_id
 ORDER BY
     rvw.created DESC,
@@ -117,7 +120,7 @@ INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
 WHERE
     rvw.place_id = @place_id
     AND rvw.last_decision_approved
-    AND rvw.created >= to_timestamp(@first_created)
+    AND rvw.created >= TO_TIMESTAMP(@first_created)
     AND rvw.id > @first_id
 ORDER BY
     rvw.created DESC,

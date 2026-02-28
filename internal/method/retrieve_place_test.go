@@ -20,7 +20,7 @@ func TestRetrieveExisting(t *testing.T) {
 	ctx := t.Context()
 
 	qs := model.New(database.OpenInTest(t))
-	plcM := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plcM := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
 	srv := NewTestServer(t, authr, qs, "")

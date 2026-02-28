@@ -18,7 +18,7 @@ func TestProduce(t *testing.T) {
 
 	db := database.OpenInTest(t)
 	qs := model.New(db)
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("great little cafe!"), mytime.Now()))
 

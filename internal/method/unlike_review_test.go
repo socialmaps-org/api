@@ -22,7 +22,7 @@ func TestUnlikeReviewAuthorizationMissing(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
@@ -53,7 +53,7 @@ func TestUnlikeReviewAuthorizationInactive(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
@@ -86,7 +86,7 @@ func TestUnlikeReviewOthers(t *testing.T) {
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
 	usrC := must.Get(qs.CreateUser(ctx, now, 3, "Charlie"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
@@ -118,7 +118,7 @@ func TestUnlikeReview(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
@@ -150,7 +150,7 @@ func TestUnlikeReviewIdempotent(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", 51.8952597, -8.4715779, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 

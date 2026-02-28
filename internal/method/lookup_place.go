@@ -81,7 +81,7 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 
 	plcN := nomCandidates[0]
 
-	plcM, err := m.QS.CreatePlace(ctx, plcN.Name, plcN.Lat, plcN.Lon, plcN.Type, plcN.ID, mytime.Now())
+	plcM, err := m.QS.CreatePlace(ctx, plcN.Name, plcN.Lon, plcN.Lat, plcN.Type, plcN.ID, mytime.Now())
 	if err != nil {
 		return nil, err
 	}
