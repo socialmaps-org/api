@@ -2,7 +2,7 @@ version: "2"
 sql:
   - engine: "postgresql"
     queries: "internal/model/queries.sql"
-    schema: "internal/database/schema.sql"
+    schema: "internal/database/"
     gen:
       go:
         sql_package: "pgx/v5"
@@ -20,6 +20,7 @@ sql:
           socialmaps_review: Review
           socialmaps_review_decision: ReviewDecision
           socialmaps_review_like: ReviewLike
+          osm2pgsql_element: Element
         overrides:
           - db_type: "pg_catalog.timestamptz"
             go_type:

@@ -1,4 +1,9 @@
-CREATE SCHEMA IF NOT EXISTS socialmaps AUTHORIZATION socialmaps_api;
+-- This line is to make sure that the consumers of this schema, for example
+-- `scripts/test-schema.sh`, does not get confused about the lack of PostGIS
+-- extension that we create in `scripts/init-db.sh`.
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE SCHEMA socialmaps AUTHORIZATION socialmaps_api;
 
 CREATE FUNCTION socialmaps.enforce_immutability()
 RETURNS TRIGGER
@@ -31,7 +36,7 @@ CREATE TABLE socialmaps.place (
     "location" "public".GEOMETRY (POINT, 4326) NOT NULL,
     lat DOUBLE PRECISION NOT NULL GENERATED ALWAYS AS (ST_Y("location")) STORED,
     lon DOUBLE PRECISION NOT NULL GENERATED ALWAYS AS (ST_X("location")) STORED,
-    osm_type TEXT NOT NULL,
+    osm_type CHARACTER(1) NOT NULL,
     osm_id BIGINT NOT NULL,
 
     n_likes BIGINT NOT NULL DEFAULT 0,
@@ -44,10 +49,12 @@ CREATE TABLE socialmaps.place (
     -- decayed numbers last updated (recalculated) at
     dec_updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
 
-    score DOUBLE PRECISION NOT NULL DEFAULT 0.5,
+    score DOUBLE PRECISION NOT NULL GENERATED ALWAYS AS (
+        (dec_n_likes + 1.0) / ((dec_n_likes + 1.0) + (dec_n_dislikes + 1.0))
+    ) STORED,
 
     CONSTRAINT "name" CHECK (LENGTH("name") <= 256),
-    CONSTRAINT osm_type CHECK (osm_type IN ('node', 'way', 'relation')),
+    CONSTRAINT osm_type CHECK (osm_type IN ('N', 'W', 'R')),
     CONSTRAINT osm_id CHECK (osm_id >= 0),
     CONSTRAINT n_likes CHECK (n_likes >= 0),
     CONSTRAINT n_dislikes CHECK (n_dislikes >= 0),
@@ -64,24 +71,6 @@ CREATE INDEX place_location ON socialmaps.place USING gist ("location");
 CREATE TRIGGER on_update_of_immutables_on_place
 BEFORE UPDATE OF created ON socialmaps.place
 EXECUTE FUNCTION socialmaps.enforce_immutability();
-
-CREATE FUNCTION socialmaps.update_place_score()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    NEW.score
-        := (NEW.dec_n_likes + 1.0)
-        / ((NEW.dec_n_likes + 1.0) + (NEW.dec_n_dislikes + 1.0))
-    ;
-    RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER on_update_of_stats_on_place
-BEFORE UPDATE OF dec_n_likes, dec_n_dislikes ON socialmaps.place
-FOR EACH ROW
-EXECUTE FUNCTION socialmaps.update_place_score();
 
 CREATE FUNCTION socialmaps.decay_place_stats(
     place_id BIGINT,

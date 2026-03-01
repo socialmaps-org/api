@@ -5,12 +5,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"codeberg.org/socialmaps/api/internal/fun"
 	"codeberg.org/socialmaps/api/internal/geo"
-	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/mytime"
-	"codeberg.org/socialmaps/api/internal/name"
-	"codeberg.org/socialmaps/api/internal/nominatim"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/jackc/pgx/v5"
@@ -29,59 +25,39 @@ type lookupPlaceArgs struct {
 
 func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Response[resource.Place], error) {
 	bbox := geo.NewBBox(args.Lat, args.Lon, 50)
-	slog.InfoContext(ctx, "bbox",
-		"south", bbox.South, "west", bbox.West, "north", bbox.North, "east", bbox.East,
-	)
 
-	places, err := m.QS.ListPlacesByCoord(ctx, bbox.South, bbox.North, bbox.West, bbox.East)
+	places, err := m.QS.LookupPlaces(ctx, bbox.South, bbox.North, bbox.West, bbox.East, args.Name)
 	if err != nil && err != pgx.ErrNoRows {
 		return nil, err
 	}
 
-	dbCandidates := fun.Filter(
-		places,
-		func(plc model.Place) bool {
-			// TODO: we should save all names and check for equivalency against
-			// each of them like we do for nominatim results to support localisation
-			return name.Equivalent(args.Name, plc.Name)
-		},
-	)
-
-	slog.InfoContext(ctx, "db results", "results", dbCandidates)
-
-	if len(dbCandidates) > 1 {
+	if len(places) > 1 {
 		return nil, errors.New("internal server error")
-	} else if len(dbCandidates) == 1 {
-		plcM := dbCandidates[0]
+	} else if len(places) == 1 {
+		plcM := places[0]
 		return &Response[resource.Place]{Body: render.Place(plcM)}, nil
 	}
 
-	nomPlaces, err := nominatim.Search(ctx, m.NominatimEndpoint, args.Name, bbox)
+	elements, err := m.QS.LookupElements(ctx, bbox.South, bbox.North, bbox.West, bbox.East, args.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	nomCandidates := fun.Filter(
-		nomPlaces,
-		func(np nominatim.Place) bool {
-			for _, nam := range np.Names {
-				if name.Equivalent(nam, args.Name) {
-					return true
-				}
-			}
-			return false
-		},
-	)
-
-	if len(nomCandidates) > 1 {
+	if len(elements) > 1 {
 		return nil, errors.New("internal server error")
-	} else if len(nomCandidates) == 0 {
+	} else if len(elements) == 0 {
 		return nil, errors.New("not found")
 	}
 
-	plcN := nomCandidates[0]
+	elm := elements[0]
 
-	plcM, err := m.QS.CreatePlace(ctx, plcN.Name, plcN.Lon, plcN.Lat, plcN.Type, plcN.ID, mytime.Now())
+	slog.InfoContext(ctx, "create-place",
+		"name", elm.Name,
+		"osm_type", elm.OsmType,
+		"osm_id", elm.OsmID,
+	)
+
+	plcM, err := m.QS.CreatePlace(ctx, *elm.Name, elm.Lon, elm.Lat, elm.OsmType, elm.OsmID, mytime.Now())
 	if err != nil {
 		return nil, err
 	}

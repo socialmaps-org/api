@@ -20,7 +20,7 @@ type GreetingOutput struct {
 	}
 }
 
-func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *http.ServeMux {
+func Mux(authr web.Authenticator, qs *model.Queries) *http.ServeMux {
 	c := Common{QS: qs}
 
 	mux := http.NewServeMux()
@@ -65,8 +65,7 @@ func Mux(authr web.Authenticator, qs *model.Queries, nominatimEndpoint string) *
 		`),
 		Tags: []string{"Places"},
 	}, (&LookupPlace{
-		Common:            c,
-		NominatimEndpoint: nominatimEndpoint,
+		Common: c,
 	}).Execute)
 
 	huma.Register(api, huma.Operation{

@@ -19,7 +19,7 @@ VALUES (
 )
 RETURNING *;
 
--- name: ListPlacesByCoord :many
+-- name: LookupPlaces :many
 SELECT *
 FROM
     socialmaps.place
@@ -30,7 +30,22 @@ WHERE
         @lon_max::double precision,
         @lat_max::double precision,
         4326
-    );
+    )
+    AND "name" = @name;
+
+-- name: LookupElements :many
+SELECT *
+FROM
+    osm2pgsql.element
+WHERE
+    "location" && ST_MAKEENVELOPE(
+        @lon_min::double precision,
+        @lat_min::double precision,
+        @lon_max::double precision,
+        @lat_max::double precision,
+        4326
+    )
+    AND "name" = @name::text;
 
 -- name: LoadPlace :one
 SELECT *

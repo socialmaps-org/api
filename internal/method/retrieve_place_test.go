@@ -20,10 +20,10 @@ func TestRetrieveExisting(t *testing.T) {
 	ctx := t.Context()
 
 	qs := model.New(database.OpenInTest(t))
-	plcM := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plcM := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	res, err := http.Get(fmt.Sprintf("%s/v1/places/%d", srv.URL, plcM.ID))
@@ -36,9 +36,9 @@ func TestRetrieveExisting(t *testing.T) {
 	err = json.NewDecoder(res.Body).Decode(&plcR)
 	require.NoError(t, err)
 
-	require.Equal(t, "Izz Cafe", j.Get[string](plcR, "name"))
-	require.Equal(t, 51.8952597, j.Get[float64](plcR, "location", "lat"))
-	require.Equal(t, -8.4715779, j.Get[float64](plcR, "location", "lon"))
+	require.Equal(t, "Woo", j.Get[string](plcR, "name"))
+	require.Equal(t, 43.7330475, j.Get[float64](plcR, "location", "lat"))
+	require.Equal(t, 7.4192941, j.Get[float64](plcR, "location", "lon"))
 }
 
 func TestRetrieveMissing(t *testing.T) {
@@ -46,7 +46,7 @@ func TestRetrieveMissing(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	res, err := http.Get(srv.URL + "/v1/places/42")

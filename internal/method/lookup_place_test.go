@@ -3,7 +3,6 @@ package method
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -16,56 +15,22 @@ import (
 	"codeberg.org/socialmaps/api/internal/mytime"
 )
 
-const nominatimDoc = `
-[
-  {
-    "place_id": 416921008,
-    "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
-    "osm_type": "node",
-    "osm_id": 7095470096,
-    "lat": "51.8952597",
-    "lon": "-8.4715779",
-    "category": "amenity",
-    "type": "restaurant",
-    "place_rank": 30,
-    "importance": 6.924620431825769e-5,
-    "addresstype": "amenity",
-    "name": "Izz Cafe",
-    "display_name": "Izz Cafe, 14, George's Quay, South Parish, South Gate A, Cork, County Cork, Munster, T12 EY24, Ireland",
-    "namedetails": { "name": "Izz Cafe" },
-    "boundingbox": ["51.8952097", "51.8953097", "-8.4716279", "-8.4715279"]
-  }
-]
-`
-
 func TestLookupNew(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 
 	qs := model.New(database.OpenInTest(t))
 
-	nominatimSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/search", r.URL.Path)
-		require.Equal(t, "izz cafe", r.FormValue("amenity"))
-		require.Equal(t, "jsonv2", r.FormValue("format"))
-		require.Equal(t, "1", r.FormValue("namedetails"))
-		require.Equal(t, "-8.4722987, 51.8948003, -8.4708413, 51.8956997", r.FormValue("viewbox"))
-
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(nominatimDoc))
-	}))
-	defer nominatimSrv.Close()
-
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, nominatimSrv.URL)
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
 	require.NoError(t, err)
 	req.URL.RawQuery = url.Values{
-		"name": {"izz cafe"},
-		"lat":  {"51.89525"},
-		"lon":  {"-8.47157"},
+		"name": {"Woo"},
+		"lat":  {"43.733047"},
+		"lon":  {"7.419294"},
 	}.Encode()
 
 	res, err := http.DefaultClient.Do(req)
@@ -77,15 +42,15 @@ func TestLookupNew(t *testing.T) {
 	var plcR any
 	err = json.NewDecoder(res.Body).Decode(&plcR)
 	require.NoError(t, err)
-	require.Equal(t, "Izz Cafe", j.Get[string](plcR, "name"))
-	require.Equal(t, 51.8952597, j.Get[float64](plcR, "location", "lat"))
-	require.Equal(t, -8.4715779, j.Get[float64](plcR, "location", "lon"))
+	require.Equal(t, "Woo", j.Get[string](plcR, "name"))
+	require.Equal(t, 43.7330475, j.Get[float64](plcR, "location", "lat"))
+	require.Equal(t, 7.4192941, j.Get[float64](plcR, "location", "lon"))
 
 	plcM := must.Get(qs.LoadPlace(ctx, j.Get[int64](plcR, "id")))
 	require.NotNil(t, plcM)
-	require.Equal(t, "Izz Cafe", plcM.Name)
-	require.Equal(t, 51.8952597, plcM.Lat)
-	require.Equal(t, -8.4715779, plcM.Lon)
+	require.Equal(t, "Woo", plcM.Name)
+	require.Equal(t, 43.7330475, plcM.Lat)
+	require.Equal(t, 7.4192941, plcM.Lon)
 }
 
 func TestLookupExisting(t *testing.T) {
@@ -94,18 +59,18 @@ func TestLookupExisting(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 
-	must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
 	require.NoError(t, err)
 	req.URL.RawQuery = url.Values{
-		"name": {"izz cafe"},
-		"lat":  {"51.89525"},
-		"lon":  {"-8.47157"},
+		"name": {"Woo"},
+		"lat":  {"43.733047"},
+		"lon":  {"7.419294"},
 	}.Encode()
 
 	res, err := http.DefaultClient.Do(req)
@@ -117,7 +82,7 @@ func TestLookupExisting(t *testing.T) {
 	var plcR any
 	err = json.NewDecoder(res.Body).Decode(&plcR)
 	require.NoError(t, err)
-	require.Equal(t, "Izz Cafe", j.Get[string](plcR, "name"))
-	require.Equal(t, 51.8952597, j.Get[float64](plcR, "location", "lat"))
-	require.Equal(t, -8.4715779, j.Get[float64](plcR, "location", "lon"))
+	require.Equal(t, "Woo", j.Get[string](plcR, "name"))
+	require.Equal(t, 43.7330475, j.Get[float64](plcR, "location", "lat"))
+	require.Equal(t, 7.4192941, j.Get[float64](plcR, "location", "lon"))
 }

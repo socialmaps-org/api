@@ -22,7 +22,7 @@ INSERT INTO socialmaps.place (
 )
 VALUES (
     $1,
-    ST_Point($2::double precision, $3::double precision, 4326),
+    ST_POINT($2::double precision, $3::double precision, 4326),
     $4,
     $5,
     $6,
@@ -314,7 +314,7 @@ INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
 WHERE
     rvw.place_id = $1
     AND rvw.last_decision_approved
-    AND rvw.created <= to_timestamp($2)
+    AND rvw.created <= TO_TIMESTAMP($2)
     AND rvw.id < $3
 ORDER BY
     rvw.created DESC,
@@ -380,7 +380,7 @@ INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
 WHERE
     rvw.place_id = $1
     AND rvw.last_decision_approved
-    AND rvw.created >= to_timestamp($2)
+    AND rvw.created >= TO_TIMESTAMP($2)
     AND rvw.id > $3
 ORDER BY
     rvw.created DESC,
@@ -426,62 +426,6 @@ func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, p
 			&i.User.Created,
 			&i.User.Updated,
 			&i.User.DisplayName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPlacesByCoord = `-- name: ListPlacesByCoord :many
-SELECT
-    id, created, updated, name, location, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
-FROM
-    socialmaps.place
-WHERE
-    "location" && ST_MakeEnvelope(
-        $1::double precision,
-        $2::double precision,
-        $3::double precision,
-        $4::double precision,
-        4326
-    )
-`
-
-func (q *Queries) ListPlacesByCoord(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64) ([]Place, error) {
-	rows, err := q.db.Query(ctx, listPlacesByCoord,
-		lonMin,
-		latMin,
-		lonMax,
-		latMax,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Place
-	for rows.Next() {
-		var i Place
-		if err := rows.Scan(
-			&i.ID,
-			&i.Created,
-			&i.Updated,
-			&i.Name,
-			&i.Location,
-			&i.Lat,
-			&i.Lon,
-			&i.OsmType,
-			&i.OsmID,
-			&i.NLikes,
-			&i.NDislikes,
-			&i.DecNLikes,
-			&i.DecNDislikes,
-			&i.DecUpdatedAt,
-			&i.Score,
 		); err != nil {
 			return nil, err
 		}
@@ -574,6 +518,114 @@ func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
 		&i.LastDecisionApproved,
 	)
 	return i, err
+}
+
+const lookupElements = `-- name: LookupElements :many
+SELECT osm_type, osm_id, name, class, subclass, tags, location, lon, lat
+FROM
+    osm2pgsql.element
+WHERE
+    "location" && ST_MAKEENVELOPE(
+        $1::double precision,
+        $2::double precision,
+        $3::double precision,
+        $4::double precision,
+        4326
+    )
+    AND "name" = $5::text
+`
+
+func (q *Queries) LookupElements(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64, name string) ([]Element, error) {
+	rows, err := q.db.Query(ctx, lookupElements,
+		lonMin,
+		latMin,
+		lonMax,
+		latMax,
+		name,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Element
+	for rows.Next() {
+		var i Element
+		if err := rows.Scan(
+			&i.OsmType,
+			&i.OsmID,
+			&i.Name,
+			&i.Class,
+			&i.Subclass,
+			&i.Tags,
+			&i.Location,
+			&i.Lon,
+			&i.Lat,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lookupPlaces = `-- name: LookupPlaces :many
+SELECT id, created, updated, name, location, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
+FROM
+    socialmaps.place
+WHERE
+    "location" && ST_MAKEENVELOPE(
+        $1::double precision,
+        $2::double precision,
+        $3::double precision,
+        $4::double precision,
+        4326
+    )
+    AND "name" = $5
+`
+
+func (q *Queries) LookupPlaces(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64, name string) ([]Place, error) {
+	rows, err := q.db.Query(ctx, lookupPlaces,
+		lonMin,
+		latMin,
+		lonMax,
+		latMax,
+		name,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Place
+	for rows.Next() {
+		var i Place
+		if err := rows.Scan(
+			&i.ID,
+			&i.Created,
+			&i.Updated,
+			&i.Name,
+			&i.Location,
+			&i.Lat,
+			&i.Lon,
+			&i.OsmType,
+			&i.OsmID,
+			&i.NLikes,
+			&i.NDislikes,
+			&i.DecNLikes,
+			&i.DecNDislikes,
+			&i.DecUpdatedAt,
+			&i.Score,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const unlikeReview = `-- name: UnlikeReview :exec

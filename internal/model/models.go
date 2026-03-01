@@ -10,6 +10,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Element struct {
+	OsmType  string
+	OsmID    int64
+	Name     *string
+	Class    string
+	Subclass *string
+	Tags     []byte
+	Location interface{}
+	Lon      float64
+	Lat      float64
+}
+
+type Osm2pgsqlOsm2pgsqlProperty struct {
+	Property string
+	Value    string
+}
+
 type Place struct {
 	ID           int64
 	Created      time.Time

@@ -31,7 +31,7 @@ func main() {
 		env.Var.OAuth2ClientSecret,
 	)
 
-	mux := method.Mux(authr, qs, env.Var.NominatimEndpoint)
+	mux := method.Mux(authr, qs)
 
 	slog.Info("LISTENING", "listen_addr", env.Var.ListenAddr)
 	err := http.ListenAndServe(env.Var.ListenAddr, mux)

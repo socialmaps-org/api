@@ -29,7 +29,7 @@ func TestListReviews(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvwA := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Get(qs.CreateReviewDecision(ctx, now, rvwA.ID, "test-mod", true, ""))
 	mockClock.Add(24 * time.Hour)
@@ -37,7 +37,7 @@ func TestListReviews(t *testing.T) {
 	must.Get(qs.CreateReviewDecision(ctx, now, rvwB.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act (#1)
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID), nil)

@@ -23,11 +23,11 @@ func TestUpdateReviewAuthorizationMissing(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I liked it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(
@@ -50,7 +50,7 @@ func TestUpdateReviewMissingReview(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(
@@ -77,12 +77,12 @@ func TestUpdateReviewCommentAndDislike(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I liked it!"), mytime.Now()))
 	must.Get(qs.CreateReviewDecision(ctx, now, rvw.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(
@@ -123,12 +123,12 @@ func TestUpdateReviewCommentAndLike(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, new("I didn't like it!"), mytime.Now()))
 	must.Get(qs.CreateReviewDecision(ctx, now, rvw.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(
@@ -169,12 +169,12 @@ func TestUpdateReviewCommentOnly(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, new("I liked it!"), mytime.Now()))
 	must.Get(qs.CreateReviewDecision(ctx, now, rvw.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(
@@ -215,11 +215,11 @@ func TestUpdateReviewLikeOnly(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, false, new("I liked it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(
@@ -258,11 +258,11 @@ func TestUpdateReviewDislikeOnly(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I didn't like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(

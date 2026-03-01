@@ -20,10 +20,10 @@ func TestCreateReviewAuthorizationMissing(t *testing.T) {
 	// Arrange
 	ctx := t.Context()
 	qs := model.New(database.OpenInTest(t))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(
@@ -46,7 +46,7 @@ func TestCreateReviewMissingPlace(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(
@@ -71,10 +71,10 @@ func TestCreateReview(t *testing.T) {
 	ctx := t.Context()
 
 	qs := model.New(database.OpenInTest(t))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, "1")
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest(

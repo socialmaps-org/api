@@ -22,12 +22,12 @@ func TestUnlikeReviewAuthorizationMissing(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
@@ -53,12 +53,12 @@ func TestUnlikeReviewAuthorizationInactive(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
@@ -86,12 +86,12 @@ func TestUnlikeReviewOthers(t *testing.T) {
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
 	usrC := must.Get(qs.CreateUser(ctx, now, 3, "Charlie"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrC.ID))
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
@@ -118,12 +118,12 @@ func TestUnlikeReview(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID))
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)
@@ -150,12 +150,12 @@ func TestUnlikeReviewIdempotent(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID), fmt.Sprint(usrB.ID))
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act (#1)
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/reviews/%d/unlike", srv.URL, rvw.ID), nil)

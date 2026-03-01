@@ -23,11 +23,11 @@ func TestDeleteReviewAuthorizationMissing(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/v1/reviews/%d", srv.URL, rvw.ID), nil)
@@ -51,11 +51,11 @@ func TestDeleteReviewAuthorizationInactive(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/v1/reviews/%d", srv.URL, rvw.ID), nil)
@@ -80,11 +80,11 @@ func TestDeleteReviewOthers(t *testing.T) {
 	qs := model.New(database.OpenInTest(t))
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID))
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/v1/reviews/%d", srv.URL, rvw.ID), nil)
@@ -110,11 +110,11 @@ func TestDeleteReview(t *testing.T) {
 
 	qs := model.New(database.OpenInTest(t))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	plc := must.Get(qs.CreatePlace(ctx, "Izz Cafe", -8.4715779, 51.8952597, "node", 7095470096, mytime.Now()))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("I like it!"), mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usr.ID))
-	srv := NewTestServer(t, authr, qs, "")
+	srv := NewTestServer(t, authr, qs)
 
 	// Act
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/v1/reviews/%d", srv.URL, rvw.ID), nil)
