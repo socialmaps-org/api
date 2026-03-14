@@ -21,26 +21,26 @@ steps:
     depends_on: [lint-ci]
 
   - name: check-vuln
-    image: docker.io/golang:1.26.0-trixie
+    image: docker.io/golang:1.26.1-trixie
     commands:
       - go install golang.org/x/vuln/cmd/govulncheck@latest
       - ./scripts/check-vuln.sh
 
   - name: check-format
-    image: docker.io/golang:1.26.0-trixie
+    image: docker.io/golang:1.26.1-trixie
     commands:
       - ./scripts/check-format.sh
     depends_on: [check-scripts]
 
   - name: check-deadcode
-    image: docker.io/golang:1.26.0-trixie
+    image: docker.io/golang:1.26.1-trixie
     commands:
       - go install golang.org/x/tools/cmd/deadcode@latest
       - ./scripts/check-deadcode.sh
     depends_on: [check-scripts]
 
   - name: lint
-    image: docker.io/golang:1.26.0-trixie
+    image: docker.io/golang:1.26.1-trixie
     commands:
       - go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
       - ./scripts/lint.sh
@@ -77,7 +77,7 @@ steps:
     depends_on: [init-db]
 
   - name: test
-    image: docker.io/golang:1.26.0-trixie
+    image: docker.io/golang:1.26.1-trixie
     commands:
       - make
       - ./scripts/test.sh
