@@ -6,8 +6,6 @@ package model
 
 import (
 	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Element struct {
@@ -16,10 +14,28 @@ type Element struct {
 	Name     *string
 	Class    string
 	Subclass *string
-	Tags     []byte
+	Tags     map[string]string
 	Location interface{}
 	Lon      float64
 	Lat      float64
+}
+
+type OptionalPlace struct {
+	ID           *int64
+	Created      *time.Time
+	Updated      *time.Time
+	Name         *string
+	Location     interface{}
+	Lat          *float64
+	Lon          *float64
+	OsmType      *string
+	OsmID        *int64
+	NLikes       *int64
+	NDislikes    *int64
+	DecNLikes    *float64
+	DecNDislikes *float64
+	DecUpdatedAt *time.Time
+	Score        *float64
 }
 
 type Osm2pgsqlOsm2pgsqlProperty struct {
@@ -56,7 +72,7 @@ type Review struct {
 	NLikes               int64
 	DecNLikes            float64
 	DecUpdatedAt         time.Time
-	LastDecisionAt       pgtype.Timestamptz
+	LastDecisionAt       *time.Time
 	LastDecisionBy       *string
 	LastDecisionApproved *bool
 }

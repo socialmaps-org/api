@@ -34,7 +34,7 @@ func main() {
 	mux := method.Mux(authr, qs)
 
 	slog.Info("LISTENING", "listen_addr", env.Var.ListenAddr)
-	err := http.ListenAndServe(env.Var.ListenAddr, mux)
+	err := http.ListenAndServe(env.Var.ListenAddr, method.CORSMiddleware(mux))
 	if err != nil && err != http.ErrServerClosed {
 		panic(err)
 	}

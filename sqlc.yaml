@@ -17,6 +17,7 @@ sql:
         rename:
           socialmaps_user: User
           socialmaps_place: Place
+          socialmaps_place_view: OptionalPlace
           socialmaps_review: Review
           socialmaps_review_decision: ReviewDecision
           socialmaps_review_like: ReviewLike
@@ -26,3 +27,12 @@ sql:
             go_type:
               import: "time"
               type: "Time"
+          - db_type: "pg_catalog.timestamptz"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
+          - column: "osm2pgsql.element.tags"
+            go_type:
+              type: "map[string]string"

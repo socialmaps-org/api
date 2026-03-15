@@ -3,9 +3,10 @@ package method
 import (
 	"context"
 	"errors"
-	"log/slog"
+	"fmt"
 
 	"codeberg.org/socialmaps/api/internal/geo"
+	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/mytime"
 	"codeberg.org/socialmaps/api/internal/render"
 	"codeberg.org/socialmaps/api/internal/resource"
@@ -26,41 +27,34 @@ type lookupPlaceArgs struct {
 func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Response[resource.Place], error) {
 	bbox := geo.NewBBox(args.Lat, args.Lon, 50)
 
-	places, err := m.QS.LookupPlaces(ctx, bbox.South, bbox.North, bbox.West, bbox.East, args.Name)
+	tuples, err := m.QS.QueryPlaces(ctx, bbox.South, bbox.North, bbox.West, bbox.East, fmt.Sprintf(`$.name == "%s"`, args.Name))
 	if err != nil && err != pgx.ErrNoRows {
 		return nil, err
 	}
 
-	if len(places) > 1 {
+	if len(tuples) > 1 {
 		return nil, errors.New("internal server error")
-	} else if len(places) == 1 {
-		plcM := places[0]
-		return &Response[resource.Place]{Body: render.Place(plcM)}, nil
 	}
 
-	elements, err := m.QS.LookupElements(ctx, bbox.South, bbox.North, bbox.West, bbox.East, args.Name)
-	if err != nil {
-		return nil, err
+	tuple := tuples[0]
+	elm := tuple.Element
+	var plcM model.Place
+
+	if tuple.OptionalPlace.IsNil() {
+		plcM, err = m.QS.CreatePlace(
+			ctx,
+			*elm.Name,
+			elm.Lon,
+			elm.Lat,
+			elm.OsmType,
+			elm.OsmID,
+			mytime.Now(),
+		)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		plcM = tuple.OptionalPlace.Unwrap()
 	}
-
-	if len(elements) > 1 {
-		return nil, errors.New("internal server error")
-	} else if len(elements) == 0 {
-		return nil, errors.New("not found")
-	}
-
-	elm := elements[0]
-
-	slog.InfoContext(ctx, "create-place",
-		"name", elm.Name,
-		"osm_type", elm.OsmType,
-		"osm_id", elm.OsmID,
-	)
-
-	plcM, err := m.QS.CreatePlace(ctx, *elm.Name, elm.Lon, elm.Lat, elm.OsmType, elm.OsmID, mytime.Now())
-	if err != nil {
-		return nil, err
-	}
-
-	return &Response[resource.Place]{Body: render.Place(plcM)}, nil
+	return &Response[resource.Place]{Body: render.Place(plcM, elm)}, nil
 }

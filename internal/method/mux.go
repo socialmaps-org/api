@@ -69,6 +69,19 @@ func Mux(authr web.Authenticator, qs *model.Queries) *http.ServeMux {
 	}).Execute)
 
 	huma.Register(api, huma.Operation{
+		OperationID: "query_places",
+		Method:      http.MethodGet,
+		Path:        "/v1/places",
+		Summary:     "Query Places",
+		Description: multiline.Dedent(`
+			Query Places in a bounding-box filtered by their OpenStreetMap [tags](https://wiki.openstreetmap.org/wiki/Tags).
+		`),
+		Tags: []string{"Places"},
+	}, (&QueryPlaces{
+		Common: c,
+	}).Execute)
+
+	huma.Register(api, huma.Operation{
 		OperationID: "retrieve_place",
 		Method:      http.MethodGet,
 		Path:        "/v1/places/{place_id}",

@@ -64,6 +64,20 @@ CREATE TABLE socialmaps.place (
     )
 );
 
+-- This is a workaround for sqlc to generate all-nilable fields for Place
+-- in a LEFT OUTER JOIN.
+-- See <https://github.com/sqlc-dev/sqlc/issues/2997#issuecomment-2667187835>
+CREATE VIEW socialmaps.place_view AS (
+    SELECT plc.*
+    FROM
+        ( -- noqa: ST11
+            SELECT NULL
+            WHERE
+                FALSE
+        ) AS "dummy"
+    FULL JOIN socialmaps.place AS plc ON TRUE
+);
+
 CREATE UNIQUE INDEX place_osm ON socialmaps.place (osm_type, osm_id);
 
 CREATE INDEX place_location ON socialmaps.place USING gist ("location");

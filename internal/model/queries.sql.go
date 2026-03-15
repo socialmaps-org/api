@@ -462,32 +462,55 @@ func (q *Queries) LoadLatestDecisionOfReview(ctx context.Context, reviewID int64
 }
 
 const loadPlace = `-- name: LoadPlace :one
-SELECT id, created, updated, name, location, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
+
+SELECT
+    elm.osm_type, elm.osm_id, elm.name, elm.class, elm.subclass, elm.tags, elm.location, elm.lon, elm.lat,  -- noqa
+    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
 FROM
-    socialmaps.place
+    socialmaps.place AS plc
+INNER JOIN osm2pgsql.element AS elm
+    ON (
+        ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
+        AND plc."name" = elm."name"
+    )
 WHERE
-    id = $1
+    plc.id = $1
 `
 
-func (q *Queries) LoadPlace(ctx context.Context, id int64) (Place, error) {
+type LoadPlaceRow struct {
+	Element Element
+	Place   Place
+}
+
+// TODO: we'll add order by later
+func (q *Queries) LoadPlace(ctx context.Context, id int64) (LoadPlaceRow, error) {
 	row := q.db.QueryRow(ctx, loadPlace, id)
-	var i Place
+	var i LoadPlaceRow
 	err := row.Scan(
-		&i.ID,
-		&i.Created,
-		&i.Updated,
-		&i.Name,
-		&i.Location,
-		&i.Lat,
-		&i.Lon,
-		&i.OsmType,
-		&i.OsmID,
-		&i.NLikes,
-		&i.NDislikes,
-		&i.DecNLikes,
-		&i.DecNDislikes,
-		&i.DecUpdatedAt,
-		&i.Score,
+		&i.Element.OsmType,
+		&i.Element.OsmID,
+		&i.Element.Name,
+		&i.Element.Class,
+		&i.Element.Subclass,
+		&i.Element.Tags,
+		&i.Element.Location,
+		&i.Element.Lon,
+		&i.Element.Lat,
+		&i.Place.ID,
+		&i.Place.Created,
+		&i.Place.Updated,
+		&i.Place.Name,
+		&i.Place.Location,
+		&i.Place.Lat,
+		&i.Place.Lon,
+		&i.Place.OsmType,
+		&i.Place.OsmID,
+		&i.Place.NLikes,
+		&i.Place.NDislikes,
+		&i.Place.DecNLikes,
+		&i.Place.DecNDislikes,
+		&i.Place.DecUpdatedAt,
+		&i.Place.Score,
 	)
 	return i, err
 }
@@ -520,103 +543,82 @@ func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
 	return i, err
 }
 
-const lookupElements = `-- name: LookupElements :many
-SELECT osm_type, osm_id, name, class, subclass, tags, location, lon, lat
+const queryPlaces = `-- name: QueryPlaces :many
+SELECT DISTINCT ON (elm."name") -- TODO: buggy. we want to allow same named POIs if they are apart enough
+    elm.osm_type, elm.osm_id, elm.name, elm.class, elm.subclass, elm.tags, elm.location, elm.lon, elm.lat,  -- noqa
+    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
 FROM
-    osm2pgsql.element
+    osm2pgsql.element AS elm
+LEFT OUTER JOIN socialmaps.place_view AS plc
+    ON (
+        ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
+        AND elm."name" = plc."name"
+        AND plc."location" && ST_MAKEENVELOPE(
+            $1::double precision,
+            $2::double precision,
+            $3::double precision,
+            $4::double precision,
+            4326
+        )
+    )
 WHERE
-    "location" && ST_MAKEENVELOPE(
+    elm."location" && ST_MAKEENVELOPE(
         $1::double precision,
         $2::double precision,
         $3::double precision,
         $4::double precision,
         4326
     )
-    AND "name" = $5::text
+    AND elm.tags @@ $5::jsonpath
+LIMIT -- noqa: AM09
+    100
 `
 
-func (q *Queries) LookupElements(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64, name string) ([]Element, error) {
-	rows, err := q.db.Query(ctx, lookupElements,
-		lonMin,
-		latMin,
-		lonMax,
-		latMax,
-		name,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Element
-	for rows.Next() {
-		var i Element
-		if err := rows.Scan(
-			&i.OsmType,
-			&i.OsmID,
-			&i.Name,
-			&i.Class,
-			&i.Subclass,
-			&i.Tags,
-			&i.Location,
-			&i.Lon,
-			&i.Lat,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type QueryPlacesRow struct {
+	Element       Element
+	OptionalPlace OptionalPlace
 }
 
-const lookupPlaces = `-- name: LookupPlaces :many
-SELECT id, created, updated, name, location, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
-FROM
-    socialmaps.place
-WHERE
-    "location" && ST_MAKEENVELOPE(
-        $1::double precision,
-        $2::double precision,
-        $3::double precision,
-        $4::double precision,
-        4326
-    )
-    AND "name" = $5
-`
-
-func (q *Queries) LookupPlaces(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64, name string) ([]Place, error) {
-	rows, err := q.db.Query(ctx, lookupPlaces,
+func (q *Queries) QueryPlaces(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64, predicate interface{}) ([]QueryPlacesRow, error) {
+	rows, err := q.db.Query(ctx, queryPlaces,
 		lonMin,
 		latMin,
 		lonMax,
 		latMax,
-		name,
+		predicate,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Place
+	var items []QueryPlacesRow
 	for rows.Next() {
-		var i Place
+		var i QueryPlacesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Created,
-			&i.Updated,
-			&i.Name,
-			&i.Location,
-			&i.Lat,
-			&i.Lon,
-			&i.OsmType,
-			&i.OsmID,
-			&i.NLikes,
-			&i.NDislikes,
-			&i.DecNLikes,
-			&i.DecNDislikes,
-			&i.DecUpdatedAt,
-			&i.Score,
+			&i.Element.OsmType,
+			&i.Element.OsmID,
+			&i.Element.Name,
+			&i.Element.Class,
+			&i.Element.Subclass,
+			&i.Element.Tags,
+			&i.Element.Location,
+			&i.Element.Lon,
+			&i.Element.Lat,
+			&i.OptionalPlace.ID,
+			&i.OptionalPlace.Created,
+			&i.OptionalPlace.Updated,
+			&i.OptionalPlace.Name,
+			&i.OptionalPlace.Location,
+			&i.OptionalPlace.Lat,
+			&i.OptionalPlace.Lon,
+			&i.OptionalPlace.OsmType,
+			&i.OptionalPlace.OsmID,
+			&i.OptionalPlace.NLikes,
+			&i.OptionalPlace.NDislikes,
+			&i.OptionalPlace.DecNLikes,
+			&i.OptionalPlace.DecNDislikes,
+			&i.OptionalPlace.DecUpdatedAt,
+			&i.OptionalPlace.Score,
 		); err != nil {
 			return nil, err
 		}

@@ -5,7 +5,7 @@ import (
 	"codeberg.org/socialmaps/api/internal/resource"
 )
 
-func Place(m model.Place) resource.Place {
+func Place(m model.Place, e model.Element) resource.Place {
 	count := m.NLikes + m.NDislikes
 	var likeRatio *float64
 	if count != 0 {
@@ -27,5 +27,8 @@ func Place(m model.Place) resource.Place {
 			LikeRatio: likeRatio,
 			Score:     score,
 		},
+		OSMType: e.OsmType,
+		OSMID:   e.OsmID,
+		OSMTags: e.Tags,
 	}
 }

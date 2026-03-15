@@ -18,7 +18,7 @@ type retrievePlaceArgs struct {
 }
 
 func (m *RetrievePlace) Execute(ctx context.Context, args *retrievePlaceArgs) (*Response[resource.Place], error) {
-	plcM, err := m.QS.LoadPlace(ctx, args.PlaceID)
+	tuple, err := m.QS.LoadPlace(ctx, args.PlaceID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, huma.Error404NotFound("place not found")
@@ -26,7 +26,7 @@ func (m *RetrievePlace) Execute(ctx context.Context, args *retrievePlaceArgs) (*
 		return nil, err
 	}
 
-	plcR := render.Place(plcM)
+	plcR := render.Place(tuple.Place, tuple.Element)
 
 	return &Response[resource.Place]{Body: plcR}, nil
 }

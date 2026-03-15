@@ -34,13 +34,14 @@ func (createReviewBodyArg) Schema(r huma.Registry) *huma.Schema {
 func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) (*Response[resource.Review], error) {
 	usr := GetAuthUser(ctx)
 
-	plc, err := m.QS.LoadPlace(ctx, args.PlaceID)
+	tuple, err := m.QS.LoadPlace(ctx, args.PlaceID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, huma.Error404NotFound("place not found")
 		}
 		return nil, err
 	}
+	plc := tuple.Place
 
 	rvwM, err := m.QS.CreateReview(ctx, plc.ID, usr.ID, args.Body.Liked, &args.Body.Comment, mytime.Now())
 	if err != nil {

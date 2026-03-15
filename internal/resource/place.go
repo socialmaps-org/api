@@ -30,11 +30,14 @@ func (ReviewStats) Schema(r huma.Registry) *huma.Schema {
 }
 
 type Place struct {
-	Object      string      `json:"object,omitempty" enum:"place"`
-	ID          int64       `json:"id" minimum:"1" doc:"Unique identifier for this **Place**."`
-	Name        string      `json:"name,omitempty" maxLength:"256" doc:"The common, default name in the local language of this **Place**."`
-	Location    Location    `json:"location,omitzero" doc:"The geolocation of this **Place** (or its centre if it's a way/relation) based on [WGS 84](https://en.wikipedia.org/wiki/WGS-84)."`
-	ReviewStats ReviewStats `json:"rating_stats,omitzero" doc:"Statistics about the **Reviews** of this **Place**."`
+	Object      string            `json:"object,omitempty" enum:"place"`
+	ID          int64             `json:"id" minimum:"1" doc:"Unique identifier for this **Place**."`
+	Name        string            `json:"name,omitempty" maxLength:"256" doc:"The common, default name in the local language of this **Place**."`
+	Location    Location          `json:"location,omitzero" doc:"The geolocation of this **Place** (or its centre if it's a way/relation) based on [WGS 84](https://en.wikipedia.org/wiki/WGS-84)."`
+	ReviewStats ReviewStats       `json:"rating_stats,omitzero" doc:"Statistics about the **Reviews** of this **Place**."`
+	OSMType     string            `json:"osm_type" doc:"OpenStreetMap [type](https://wiki.openstreetmap.org/wiki/Elements) of this **Place**."`
+	OSMID       int64             `json:"osm_id" doc:"OpenStreetMap [ID](https://wiki.openstreetmap.org/wiki/Elements#id) of this **Place**."`
+	OSMTags     map[string]string `json:"osm_tags" doc:"OpenStreetMap [tags](https://wiki.openstreetmap.org/wiki/Tags) of this **Place**."`
 }
 
 type PlaceStub struct {

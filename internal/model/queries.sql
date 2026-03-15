@@ -19,40 +19,49 @@ VALUES (
 )
 RETURNING *;
 
--- name: LookupPlaces :many
-SELECT *
+-- name: QueryPlaces :many
+SELECT DISTINCT ON (elm."name") -- TODO: buggy. we want to allow same named POIs if they are apart enough
+    sqlc.embed(elm),  -- noqa
+    sqlc.embed(plc)  -- noqa
 FROM
-    socialmaps.place
+    osm2pgsql.element AS elm
+LEFT OUTER JOIN socialmaps.place_view AS plc
+    ON (
+        ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
+        AND elm."name" = plc."name"
+        AND plc."location" && ST_MAKEENVELOPE(
+            @lon_min::double precision,
+            @lat_min::double precision,
+            @lon_max::double precision,
+            @lat_max::double precision,
+            4326
+        )
+    )
 WHERE
-    "location" && ST_MAKEENVELOPE(
+    elm."location" && ST_MAKEENVELOPE(
         @lon_min::double precision,
         @lat_min::double precision,
         @lon_max::double precision,
         @lat_max::double precision,
         4326
     )
-    AND "name" = @name;
-
--- name: LookupElements :many
-SELECT *
-FROM
-    osm2pgsql.element
-WHERE
-    "location" && ST_MAKEENVELOPE(
-        @lon_min::double precision,
-        @lat_min::double precision,
-        @lon_max::double precision,
-        @lat_max::double precision,
-        4326
-    )
-    AND "name" = @name::text;
+    AND elm.tags @@ @predicate::jsonpath
+LIMIT -- noqa: AM09
+    100; -- TODO: we'll add order by later
 
 -- name: LoadPlace :one
-SELECT *
+SELECT
+    sqlc.embed(elm),  -- noqa
+    sqlc.embed(plc)  -- noqa
 FROM
-    socialmaps.place
+    socialmaps.place AS plc
+INNER JOIN osm2pgsql.element AS elm
+    ON (
+        ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
+        AND plc."name" = elm."name"
+    )
 WHERE
-    id = $1;
+    plc.id = $1;
 
 -- name: CreateReview :one
 INSERT INTO socialmaps.review (
