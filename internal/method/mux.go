@@ -7,6 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
+	"github.com/openai/openai-go/v3"
 
 	"codeberg.org/socialmaps/api/internal/model"
 	"codeberg.org/socialmaps/api/internal/multiline"
@@ -52,6 +53,22 @@ func Mux(authr web.Authenticator, qs *model.Queries) *http.ServeMux {
 	}
 
 	api := humago.New(mux, config)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "formulate_query",
+		Method:      http.MethodGet,
+		Path:        "/v1/places/query/formulate",
+		Summary:     "Formulate a query",
+		Description: multiline.Dedent(`
+			Formulate a query.
+
+			**This is an experimental endpoint.**
+		`),
+		Tags: []string{"Places"},
+	}, (&FormulateQuery{
+		Common:       c,
+		openaiClient: openai.NewClient(),
+	}).Execute)
 
 	huma.Register(api, huma.Operation{
 		OperationID: "lookup_place",
