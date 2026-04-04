@@ -10,6 +10,7 @@ require (
 	github.com/openai/openai-go/v3 v3.30.0
 	github.com/stretchr/testify v1.11.1
 	github.com/theory/sqljson v0.4.0
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20260323153451-8400f4a93807
 	golang.org/x/text v0.29.0
 )
 

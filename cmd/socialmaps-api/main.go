@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	_ "golang.org/x/crypto/x509roots/fallback"
+
 	"codeberg.org/socialmaps/api/internal/database"
 	"codeberg.org/socialmaps/api/internal/env"
 	"codeberg.org/socialmaps/api/internal/method"
