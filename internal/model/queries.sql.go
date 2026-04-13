@@ -464,7 +464,7 @@ func (q *Queries) LoadLatestDecisionOfReview(ctx context.Context, reviewID int64
 const loadPlace = `-- name: LoadPlace :one
 
 SELECT
-    elm.osm_type, elm.osm_id, elm.name, elm.class, elm.subclass, elm.tags, elm.location, elm.lon, elm.lat,  -- noqa
+    elm.osm_type, elm.osm_id, elm.location, elm.tags, elm.lon, elm.lat, elm.name,  -- noqa
     plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
 FROM
     socialmaps.place AS plc
@@ -489,13 +489,11 @@ func (q *Queries) LoadPlace(ctx context.Context, id int64) (LoadPlaceRow, error)
 	err := row.Scan(
 		&i.Element.OsmType,
 		&i.Element.OsmID,
-		&i.Element.Name,
-		&i.Element.Class,
-		&i.Element.Subclass,
-		&i.Element.Tags,
 		&i.Element.Location,
+		&i.Element.Tags,
 		&i.Element.Lon,
 		&i.Element.Lat,
+		&i.Element.Name,
 		&i.Place.ID,
 		&i.Place.Created,
 		&i.Place.Updated,
@@ -545,7 +543,7 @@ func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
 
 const queryPlaces = `-- name: QueryPlaces :many
 SELECT DISTINCT ON (elm."name") -- TODO: buggy. we want to allow same named POIs if they are apart enough
-    elm.osm_type, elm.osm_id, elm.name, elm.class, elm.subclass, elm.tags, elm.location, elm.lon, elm.lat,  -- noqa
+    elm.osm_type, elm.osm_id, elm.location, elm.tags, elm.lon, elm.lat, elm.name,  -- noqa
     plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
 FROM
     osm2pgsql.element AS elm
@@ -597,13 +595,11 @@ func (q *Queries) QueryPlaces(ctx context.Context, lonMin float64, latMin float6
 		if err := rows.Scan(
 			&i.Element.OsmType,
 			&i.Element.OsmID,
-			&i.Element.Name,
-			&i.Element.Class,
-			&i.Element.Subclass,
-			&i.Element.Tags,
 			&i.Element.Location,
+			&i.Element.Tags,
 			&i.Element.Lon,
 			&i.Element.Lat,
+			&i.Element.Name,
 			&i.OptionalPlace.ID,
 			&i.OptionalPlace.Created,
 			&i.OptionalPlace.Updated,

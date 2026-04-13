@@ -35,7 +35,7 @@ func (m *QueryPlaces) Execute(ctx context.Context, args *queryPlacesArgs) (*Resp
 		if tuple.OptionalPlace.IsNil() {
 			plcM, err = m.QS.CreatePlace(
 				ctx,
-				*elm.Name,
+				elm.Name,
 				elm.Lon,
 				elm.Lat,
 				elm.OsmType,

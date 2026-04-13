@@ -4,13 +4,10 @@ local element = osm2pgsql.define_table({
 	name = "element",
 	ids = { type = "any", type_column = "osm_type", id_column = "osm_id" },
 	columns = {
-		{ column = "name" },
-		{ column = "class", not_null = true },
-		{ column = "subclass" },
-		{ column = "tags", type = "jsonb", not_null = true },
 		{ column = "location", type = "point", not_null = true, projection = 4326 },
+		{ column = "tags", type = "jsonb", not_null = true },
 
-		-- Generated columns (Postgres computes; osm2pgsql must not fill them)
+		-- Generated columns (Postgres computes; osm2pgsql MUST NOT fill them):
 		{
 			column = "lon",
 			sql_type = 'DOUBLE PRECISION NOT NULL GENERATED ALWAYS AS (ST_X("location")) STORED',
@@ -21,31 +18,23 @@ local element = osm2pgsql.define_table({
 			sql_type = 'DOUBLE PRECISION NOT NULL GENERATED ALWAYS AS (ST_Y("location")) STORED',
 			create_only = true,
 		},
+		{
+			column = "name",
+			sql_type = "TEXT NOT NULL GENERATED ALWAYS AS (tags ->> 'name') STORED",
+			create_only = true,
+		},
 	},
 })
 
 local function process_element(object, location)
 	local a = {
-		name = object.tags.name,
 		location = location,
 		tags = object.tags,
 	}
 
-	if not object.tags.name then
-		return
+	if object.tags.name and (object.tags.amenity or object.tags.shop) then
+		element:insert(a)
 	end
-
-	if object.tags.amenity then
-		a.class = "amenity"
-		a.subclass = object.tags.amenity
-	elseif object.tags.shop then
-		a.class = "shop"
-		a.subclass = object.tags.shop
-	else
-		return
-	end
-
-	element:insert(a)
 end
 
 function osm2pgsql.process_node(object)
@@ -53,7 +42,14 @@ function osm2pgsql.process_node(object)
 end
 
 function osm2pgsql.process_way(object)
-	if object.is_closed and object.tags.building then
+	if object.is_closed then
 		process_element(object, object:as_polygon():centroid())
+	end
+end
+
+function osm2pgsql.process_relation(object)
+	local multipolygon = object:as_multipolygon()
+	if not multipolygon:is_null() then
+		process_element(object, multipolygon:centroid())
 	end
 end

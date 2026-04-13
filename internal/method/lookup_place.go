@@ -43,7 +43,7 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 	if tuple.OptionalPlace.IsNil() {
 		plcM, err = m.QS.CreatePlace(
 			ctx,
-			*elm.Name,
+			elm.Name,
 			elm.Lon,
 			elm.Lat,
 			elm.OsmType,

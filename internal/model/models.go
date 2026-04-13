@@ -11,13 +11,11 @@ import (
 type Element struct {
 	OsmType  string
 	OsmID    int64
-	Name     *string
-	Class    string
-	Subclass *string
-	Tags     map[string]string
 	Location interface{}
+	Tags     map[string]string
 	Lon      float64
 	Lat      float64
+	Name     string
 }
 
 type OptionalPlace struct {

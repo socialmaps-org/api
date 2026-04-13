@@ -16,13 +16,11 @@ SET default_table_access_method = heap;
 CREATE TABLE osm2pgsql.element (
     osm_type character(1) CONSTRAINT element_tmp_osm_type_not_null NOT NULL,
     osm_id bigint CONSTRAINT element_tmp_osm_id_not_null NOT NULL,
-    name text,
-    class text CONSTRAINT element_tmp_class_not_null NOT NULL,
-    subclass text,
-    tags jsonb CONSTRAINT element_tmp_tags_not_null NOT NULL,
     location public.geometry(Point,4326) CONSTRAINT element_tmp_location_not_null NOT NULL,
+    tags jsonb CONSTRAINT element_tmp_tags_not_null NOT NULL,
     lon double precision GENERATED ALWAYS AS (public.st_x(location)) STORED CONSTRAINT element_tmp_lon_not_null NOT NULL,
-    lat double precision GENERATED ALWAYS AS (public.st_y(location)) STORED CONSTRAINT element_tmp_lat_not_null NOT NULL
+    lat double precision GENERATED ALWAYS AS (public.st_y(location)) STORED CONSTRAINT element_tmp_lat_not_null NOT NULL,
+    name text GENERATED ALWAYS AS ((tags ->> 'name'::text)) STORED CONSTRAINT element_tmp_name_not_null NOT NULL
 );
 ALTER TABLE osm2pgsql.element OWNER TO osm2pgsql;
 CREATE TABLE osm2pgsql.osm2pgsql_properties (
