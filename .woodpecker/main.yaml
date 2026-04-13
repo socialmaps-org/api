@@ -32,6 +32,13 @@ steps:
       - ./scripts/check-format.sh
     depends_on: [check-scripts]
 
+  - name: check-lua-format
+    image: docker.io/rust:1-trixie
+    commands:
+      - cargo install stylua --features lua53
+      - ./scripts/check-lua-format.sh
+    depends_on: [check-scripts]
+
   - name: check-deadcode
     image: docker.io/golang:1.26.2-trixie
     commands:
@@ -50,6 +57,14 @@ steps:
     image: docker.io/sqlfluff/sqlfluff:3.5.0
     commands:
       - ./scripts/lint-sql.sh
+    depends_on: [check-scripts]
+
+  - name: lint-lua
+    image: docker.io/debian:trixie
+    commands:
+      - DEBIAN_FRONTEND=noninteractive apt-get update && apt-get -y install lua5.3 liblua5.3-dev luarocks
+      - luarocks install luacheck
+      - ./scripts/lint-lua.sh
     depends_on: [check-scripts]
 
   - name: test-schema
