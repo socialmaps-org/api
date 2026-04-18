@@ -32,7 +32,23 @@ local function process_element(object, location)
 		tags = object.tags,
 	}
 
-	if object.tags.name and (object.tags.amenity or object.tags.shop) then
+	if
+		object.tags.name
+		and (
+			false
+			or object.tags.amenity
+			or object.tags.craft
+			or object.tags.healthcare
+			or object.tags.historic
+			or object.tags.leisure
+			or object.tags.man_made
+			or object.tags.natural
+			or object.tags.office
+			or object.tags.shop
+			or object.tags.sport
+			or object.tags.tourism
+		)
+	then
 		element:insert(a)
 	end
 end
