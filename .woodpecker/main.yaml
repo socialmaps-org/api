@@ -21,13 +21,13 @@ steps:
     depends_on: [lint-ci]
 
   - name: check-vuln
-    image: docker.io/golang:1.26.2-trixie
+    image: docker.io/golang:1.26.3-trixie
     commands:
       - go install golang.org/x/vuln/cmd/govulncheck@latest
       - ./scripts/check-vuln.sh
 
   - name: check-format
-    image: docker.io/golang:1.26.2-trixie
+    image: docker.io/golang:1.26.3-trixie
     commands:
       - ./scripts/check-format.sh
     depends_on: [check-scripts]
@@ -40,14 +40,14 @@ steps:
     depends_on: [check-scripts]
 
   - name: check-deadcode
-    image: docker.io/golang:1.26.2-trixie
+    image: docker.io/golang:1.26.3-trixie
     commands:
       - go install golang.org/x/tools/cmd/deadcode@latest
       - ./scripts/check-deadcode.sh
     depends_on: [check-scripts]
 
   - name: lint
-    image: docker.io/golang:1.26.2-trixie
+    image: docker.io/golang:1.26.3-trixie
     commands:
       - go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
       - ./scripts/lint.sh
@@ -80,7 +80,7 @@ steps:
     commands:
       - ./scripts/init-db.sh
     environment:
-       PG_HOST: postgres
+      PG_HOST: postgres
     depends_on: [test-schema]
 
   - name: import-osm
@@ -88,16 +88,16 @@ steps:
     commands:
       - ./scripts/import-osm.sh
     environment:
-       PG_HOST: postgres
+      PG_HOST: postgres
     depends_on: [init-db]
 
   - name: test
-    image: docker.io/golang:1.26.2-trixie
+    image: docker.io/golang:1.26.3-trixie
     commands:
       - make
       - ./scripts/test.sh
     environment:
-      DATABASE_DSN: 'postgres://socialmaps_api@postgres:5432/socialmaps'
+      DATABASE_DSN: "postgres://socialmaps_api@postgres:5432/socialmaps"
     depends_on: [check-scripts, check-format, check-deadcode, lint, import-osm]
 
   - name: publish-dryrun
