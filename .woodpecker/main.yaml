@@ -46,11 +46,10 @@ steps:
       - ./scripts/check-deadcode.sh
     depends_on: [check-scripts]
 
-  - name: lint
-    image: docker.io/golang:1.26.3-trixie
+  - name: lint-go
+    image: docker.io/golangci/golangci-lint:v2.12.2-alpine
     commands:
-      - go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
-      - ./scripts/lint.sh
+      - ./scripts/lint-go.sh
     depends_on: [check-scripts]
 
   - name: lint-sql
@@ -98,7 +97,12 @@ steps:
       - ./scripts/test.sh
     environment:
       DATABASE_DSN: "postgres://socialmaps_api@postgres:5432/socialmaps"
-    depends_on: [check-scripts, check-format, check-deadcode, lint, import-osm]
+    depends_on:
+      - check-scripts
+      - check-format
+      - check-deadcode
+      - lint-go
+      - import-osm
 
   - name: publish-dryrun
     image: codeberg.org/woodpecker-plugins/docker-buildx:6.0.3

@@ -38,7 +38,7 @@ func TestConsume(t *testing.T) {
 		require.Equal(t, true, ccReq.SafePrompt)
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(
+		must.Get(w.Write(
 			[]byte(`{
 				"id": "bdb27a8e1fa84f5d9128f2bb4b29f42e",
 				"created": 1765137528,
@@ -61,7 +61,7 @@ func TestConsume(t *testing.T) {
 					}
 				]
 			}`),
-		)
+		))
 	}))
 	t.Cleanup(mistralSrv.Close)
 

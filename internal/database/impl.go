@@ -26,11 +26,11 @@ func Open(dataSourceName string) *pgxpool.Pool {
 }
 
 func OpenInTest(t *testing.T) pgx.Tx {
-	ctx := t.Context()
+	ctx := context.Background()
 	pool := Open(env.Var.DatabaseDSN)
 	tx := must.Get(pool.Begin(ctx))
 	t.Cleanup(func() {
-		tx.Rollback(ctx)
+		must.Do(tx.Rollback(ctx))
 	})
 	return tx
 }

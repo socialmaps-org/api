@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"codeberg.org/socialmaps/api/internal/model"
+	"codeberg.org/socialmaps/api/internal/must"
 	"codeberg.org/socialmaps/api/internal/web"
 	"github.com/stretchr/testify/require"
 )
@@ -35,9 +36,9 @@ func NewTestAuthenticator(t *testing.T, osmSubs ...string) *TestAuthenticator {
 		if len(osmSubs) != 0 {
 			osmSub := osmSubs[0]
 			osmSubs = osmSubs[1:]
-			w.Write([]byte(fmt.Sprintf(`{"active": true, "openstreetmap_sub": "%s"}`, osmSub)))
+			must.Get(fmt.Fprintf(w, `{"active": true, "openstreetmap_sub": "%s"}`, osmSub))
 		} else {
-			w.Write([]byte(`{"active": false}`))
+			must.Get(w.Write([]byte(`{"active": false}`)))
 		}
 	}))
 	t.Cleanup(authSrv.Close)

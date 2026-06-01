@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -eux
 
-staticcheck ./...
+golangci-lint run
