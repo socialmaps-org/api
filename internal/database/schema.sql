@@ -78,8 +78,6 @@ CREATE VIEW socialmaps.place_view AS (
     FULL JOIN socialmaps.place AS plc ON TRUE
 );
 
-CREATE UNIQUE INDEX place_osm ON socialmaps.place (osm_type, osm_id);
-
 CREATE INDEX place_location ON socialmaps.place USING gist ("location");
 
 CREATE TRIGGER on_update_of_immutables_on_place
