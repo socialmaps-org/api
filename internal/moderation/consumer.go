@@ -28,6 +28,7 @@ func consume(ctx context.Context, qs *model.Queries, mod Moderator, ch <-chan mo
 			"status", "error",
 			"error", err.Error(),
 		)
+		return
 	}
 
 	decM, err := qs.CreateReviewDecision(ctx, mytime.Now(), rvw.ID, mod.ID(), dec.Approved, dec.Details)
