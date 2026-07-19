@@ -3,6 +3,7 @@ package moderation
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 
 	"codeberg.org/socialmaps/api/internal/mistral"
 )
@@ -49,6 +50,10 @@ func (mod *MistralLarge2512v1) Moderate(review string) (*Decision, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if len(res.Choices) < 1 {
+		return nil, fmt.Errorf("no choices in mistral response")
 	}
 
 	var content content
