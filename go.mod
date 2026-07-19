@@ -1,12 +1,12 @@
 module codeberg.org/socialmaps/api
 
-go 1.26.3
+go 1.26.5
 
 require (
 	github.com/benbjohnson/clock v1.3.5
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/danielgtaylor/huma/v2 v2.34.1
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.10.0
 	github.com/openai/openai-go/v3 v3.30.0
 	github.com/stretchr/testify v1.11.1
 	github.com/theory/sqljson v0.4.0
