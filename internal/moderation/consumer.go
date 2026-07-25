@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/mytime"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/mytime"
 )
 
 func Consumer(ctx context.Context, qs *model.Queries, mod Moderator, ch <-chan model.Review) {

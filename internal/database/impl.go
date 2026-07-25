@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"codeberg.org/socialmaps/api/internal/env"
-	"codeberg.org/socialmaps/api/internal/must"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.socialmaps.org/api/internal/env"
+	"golang.socialmaps.org/api/internal/must"
 )
 
 func Open(dataSourceName string) *pgxpool.Pool {

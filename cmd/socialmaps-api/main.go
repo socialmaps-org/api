@@ -7,13 +7,13 @@ import (
 
 	_ "golang.org/x/crypto/x509roots/fallback"
 
-	"codeberg.org/socialmaps/api/internal/database"
-	"codeberg.org/socialmaps/api/internal/env"
-	"codeberg.org/socialmaps/api/internal/method"
-	"codeberg.org/socialmaps/api/internal/mistral"
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/moderation"
-	"codeberg.org/socialmaps/api/internal/web"
+	"golang.socialmaps.org/api/internal/database"
+	"golang.socialmaps.org/api/internal/env"
+	"golang.socialmaps.org/api/internal/method"
+	"golang.socialmaps.org/api/internal/mistral"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/moderation"
+	"golang.socialmaps.org/api/internal/web"
 )
 
 func main() {

@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"codeberg.org/socialmaps/api/internal/geo"
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/mytime"
-	"codeberg.org/socialmaps/api/internal/render"
-	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/jackc/pgx/v5"
+	"golang.socialmaps.org/api/internal/geo"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/mytime"
+	"golang.socialmaps.org/api/internal/render"
+	"golang.socialmaps.org/api/internal/resource"
 )
 
 type LookupPlace struct {

@@ -9,7 +9,7 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/theory/sqljson/path"
 
-	"codeberg.org/socialmaps/api/internal/resource"
+	"golang.socialmaps.org/api/internal/resource"
 )
 
 type FormulateQuery struct {

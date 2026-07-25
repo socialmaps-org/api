@@ -3,7 +3,7 @@ package moderation
 import (
 	"context"
 
-	"codeberg.org/socialmaps/api/internal/model"
+	"golang.socialmaps.org/api/internal/model"
 )
 
 func Process(ctx context.Context, qs *model.Queries, mod Moderator) {

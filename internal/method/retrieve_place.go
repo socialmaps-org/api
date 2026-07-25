@@ -3,10 +3,10 @@ package method
 import (
 	"context"
 
-	"codeberg.org/socialmaps/api/internal/render"
-	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
+	"golang.socialmaps.org/api/internal/render"
+	"golang.socialmaps.org/api/internal/resource"
 )
 
 type RetrievePlace struct {

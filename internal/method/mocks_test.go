@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/must"
-	"codeberg.org/socialmaps/api/internal/web"
 	"github.com/stretchr/testify/require"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/must"
+	"golang.socialmaps.org/api/internal/web"
 )
 
 type TestAuthenticator struct {

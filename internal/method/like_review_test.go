@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"codeberg.org/socialmaps/api/internal/must"
-	"codeberg.org/socialmaps/api/internal/mytime"
 	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/require"
+	"golang.socialmaps.org/api/internal/must"
+	"golang.socialmaps.org/api/internal/mytime"
 
-	"codeberg.org/socialmaps/api/internal/database"
-	"codeberg.org/socialmaps/api/internal/model"
+	"golang.socialmaps.org/api/internal/database"
+	"golang.socialmaps.org/api/internal/model"
 )
 
 func TestLikeReviewAuthorizationMissing(t *testing.T) {

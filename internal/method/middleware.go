@@ -6,11 +6,11 @@ import (
 	"regexp"
 	"strconv"
 
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/must"
-	"codeberg.org/socialmaps/api/internal/mytime"
-	"codeberg.org/socialmaps/api/internal/web"
 	"github.com/danielgtaylor/huma/v2"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/must"
+	"golang.socialmaps.org/api/internal/mytime"
+	"golang.socialmaps.org/api/internal/web"
 )
 
 func CORSMiddleware(next http.Handler) http.Handler {

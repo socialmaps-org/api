@@ -3,9 +3,9 @@ package method
 import (
 	"context"
 
-	"codeberg.org/socialmaps/api/internal/mytime"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
+	"golang.socialmaps.org/api/internal/mytime"
 )
 
 type LikeReview struct {
