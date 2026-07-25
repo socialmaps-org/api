@@ -119,7 +119,6 @@ publish-container:
   interruptible: false
   resource_group: gitlab-container
   before_script:
-    - echo "$DOCKER_HUB_PASSWORD" | buildah login --username "$DOCKER_HUB_USER" --password-stdin docker.io
     - echo "$CI_REGISTRY_PASSWORD" | buildah login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
     - buildah build --platform linux/amd64 --tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" --tag "${CI_REGISTRY_IMAGE}:latest" .
