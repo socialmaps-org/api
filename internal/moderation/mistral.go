@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"codeberg.org/socialmaps/api/internal/mistral"
+	"golang.socialmaps.org/api/internal/mistral"
 )
 
 //go:embed data/system_prompt.md

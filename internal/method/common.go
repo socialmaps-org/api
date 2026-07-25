@@ -3,7 +3,7 @@ package method
 import (
 	"context"
 
-	"codeberg.org/socialmaps/api/internal/model"
+	"golang.socialmaps.org/api/internal/model"
 )
 
 type Common struct {

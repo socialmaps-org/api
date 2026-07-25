@@ -3,8 +3,8 @@ package geo_test
 import (
 	"testing"
 
-	"codeberg.org/socialmaps/api/internal/floats"
-	"codeberg.org/socialmaps/api/internal/geo"
+	"golang.socialmaps.org/api/internal/floats"
+	"golang.socialmaps.org/api/internal/geo"
 )
 
 const tolerance = 0.000001

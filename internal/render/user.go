@@ -1,8 +1,8 @@
 package render
 
 import (
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/resource"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/resource"
 )
 
 func User(m model.User) resource.User {

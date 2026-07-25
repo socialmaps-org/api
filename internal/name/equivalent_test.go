@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"codeberg.org/socialmaps/api/internal/name"
+	"golang.socialmaps.org/api/internal/name"
 )
 
 func TestBasic(t *testing.T) {

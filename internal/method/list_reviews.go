@@ -5,9 +5,9 @@ import (
 	"math"
 	"time"
 
-	"codeberg.org/socialmaps/api/internal/render"
-	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/jackc/pgx/v5"
+	"golang.socialmaps.org/api/internal/render"
+	"golang.socialmaps.org/api/internal/resource"
 )
 
 type ListReviews struct {

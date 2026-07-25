@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"codeberg.org/socialmaps/api/internal/model"
+	"golang.socialmaps.org/api/internal/model"
 )
 
 func Producer(ctx context.Context, qs *model.Queries, ch chan<- model.Review) {

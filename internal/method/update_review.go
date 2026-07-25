@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"time"
 
-	"codeberg.org/socialmaps/api/internal/mytime"
-	"codeberg.org/socialmaps/api/internal/render"
-	"codeberg.org/socialmaps/api/internal/resource"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
+	"golang.socialmaps.org/api/internal/mytime"
+	"golang.socialmaps.org/api/internal/render"
+	"golang.socialmaps.org/api/internal/resource"
 )
 
 type UpdateReview struct {

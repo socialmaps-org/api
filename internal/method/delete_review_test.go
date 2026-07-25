@@ -8,10 +8,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/require"
 
-	"codeberg.org/socialmaps/api/internal/database"
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/must"
-	"codeberg.org/socialmaps/api/internal/mytime"
+	"golang.socialmaps.org/api/internal/database"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/must"
+	"golang.socialmaps.org/api/internal/mytime"
 )
 
 // TestDeleteReviewAuthorizationMissing tests that one cannot call the endpoint

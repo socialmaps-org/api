@@ -9,9 +9,9 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 	"github.com/openai/openai-go/v3"
 
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/multiline"
-	"codeberg.org/socialmaps/api/internal/web"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/multiline"
+	"golang.socialmaps.org/api/internal/web"
 )
 
 // GreetingOutput represents the greeting operation response.

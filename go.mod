@@ -1,4 +1,4 @@
-module codeberg.org/socialmaps/api
+module golang.socialmaps.org/api
 
 go 1.26.5
 

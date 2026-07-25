@@ -3,10 +3,10 @@ package method
 import (
 	"context"
 
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/mytime"
-	"codeberg.org/socialmaps/api/internal/render"
-	"codeberg.org/socialmaps/api/internal/resource"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/mytime"
+	"golang.socialmaps.org/api/internal/render"
+	"golang.socialmaps.org/api/internal/resource"
 )
 
 type QueryPlaces struct {

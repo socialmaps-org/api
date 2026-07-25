@@ -9,11 +9,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"codeberg.org/socialmaps/api/internal/database"
-	"codeberg.org/socialmaps/api/internal/j"
-	"codeberg.org/socialmaps/api/internal/model"
-	"codeberg.org/socialmaps/api/internal/must"
-	"codeberg.org/socialmaps/api/internal/mytime"
+	"golang.socialmaps.org/api/internal/database"
+	"golang.socialmaps.org/api/internal/j"
+	"golang.socialmaps.org/api/internal/model"
+	"golang.socialmaps.org/api/internal/must"
+	"golang.socialmaps.org/api/internal/mytime"
 )
 
 func TestCreateReviewAuthorizationMissing(t *testing.T) {
