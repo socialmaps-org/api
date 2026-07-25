@@ -1,0 +1,130 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+stages:
+  - verify
+  - test
+  - publish
+
+default:
+  interruptible: true
+
+check-scripts:
+  stage: verify
+  image: docker.io/koalaman/shellcheck-alpine:v0.11.0
+  script:
+    - ./scripts/check-scripts.sh
+
+check-vuln:
+  stage: verify
+  image: docker.io/golang:1.26.5-trixie
+  before_script:
+    - go install golang.org/x/vuln/cmd/govulncheck@latest
+  script:
+    - ./scripts/check-vuln.sh
+
+check-format:
+  stage: verify
+  image: docker.io/golang:1.26.5-trixie
+  script:
+    - ./scripts/check-format.sh
+
+check-lua-format:
+  stage: verify
+  image: docker.io/rust:1-trixie
+  before_script:
+    - cargo install stylua --locked --features lua53
+  script:
+    - ./scripts/check-lua-format.sh
+
+check-deadcode:
+  stage: verify
+  image: docker.io/golang:1.26.5-trixie
+  before_script:
+    - go install golang.org/x/tools/cmd/deadcode@latest
+  script:
+    - ./scripts/check-deadcode.sh
+
+lint-go:
+  stage: verify
+  image: docker.io/golangci/golangci-lint:v2.12.2-alpine
+  script:
+    - ./scripts/lint-go.sh
+
+lint-sql:
+  stage: verify
+  image:
+    name: docker.io/sqlfluff/sqlfluff:3.5.0
+    entrypoint: [""]
+  script:
+    - ./scripts/lint-sql.sh
+
+lint-lua:
+  stage: verify
+  image:
+    name: docker.io/debian:trixie
+  variables:
+    DEBIAN_FRONTEND: noninteractive
+  before_script:
+    - apt-get update
+    - apt-get install --yes --no-install-recommends lua5.3 liblua5.3-dev luarocks gcc
+    - luarocks install luacheck 1.2.0-1
+  script:
+    - ./scripts/lint-lua.sh
+
+test:
+  stage: test
+  image: docker.io/golang:1.26.5-trixie
+  services:
+    - name: docker.io/postgis/postgis:18-3.6
+      alias: postgres
+      variables:
+        HEALTHCHECK_TCP_PORT: "5432"
+  variables:
+    DATABASE_DSN: "postgres://socialmaps_api@postgres:5432/socialmaps"
+    DEBIAN_FRONTEND: noninteractive
+    PG_HOST: postgres
+    POSTGRES_HOST_AUTH_METHOD: trust
+  before_script:
+    - apt-get update
+    - apt-get install --yes --no-install-recommends osm2pgsql postgresql-client
+  script:
+    - ./scripts/test-schema.sh
+    - ./scripts/init-db.sh
+    - ./scripts/import-osm.sh
+    - make
+    - ./scripts/test.sh
+
+.build-container:
+  stage: publish
+  image: quay.io/buildah/stable:v1.43.1
+  variables:
+    BUILDAH_FORMAT: docker
+    # Docker offers overlayfs as a default, but Buildah cannot stack overlayfs
+    # on top of another overlayfs filesystem.
+    STORAGE_DRIVER: vfs
+
+build-container:
+  extends: .build-container
+  script:
+    - buildah build --platform linux/amd64 --tag "localhost/socialmaps-api:${CI_COMMIT_SHA}" .
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+publish-container:
+  extends: .build-container
+  interruptible: false
+  resource_group: gitlab-container
+  before_script:
+    - echo "$DOCKER_HUB_PASSWORD" | buildah login --username "$DOCKER_HUB_USER" --password-stdin docker.io
+    - echo "$CI_REGISTRY_PASSWORD" | buildah login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - buildah build --platform linux/amd64 --tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" --tag "${CI_REGISTRY_IMAGE}:latest" .
+    - buildah push "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}"
+    - buildah push "${CI_REGISTRY_IMAGE}:latest"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
