@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/theory/sqljson v0.4.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260323153451-8400f4a93807
-	golang.org/x/text v0.29.0
+	golang.org/x/text v0.39.0
 )
 
 require (
@@ -27,6 +27,6 @@ require (
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sync v0.21.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
