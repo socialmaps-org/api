@@ -462,7 +462,6 @@ func (q *Queries) LoadLatestDecisionOfReview(ctx context.Context, reviewID int64
 }
 
 const loadPlace = `-- name: LoadPlace :one
-
 SELECT
     elm.osm_type, elm.osm_id, elm.location, elm.tags, elm.lon, elm.lat, elm.name,  -- noqa
     plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
@@ -482,7 +481,6 @@ type LoadPlaceRow struct {
 	Place   Place
 }
 
-// TODO: we'll add order by later
 func (q *Queries) LoadPlace(ctx context.Context, id int64) (LoadPlaceRow, error) {
 	row := q.db.QueryRow(ctx, loadPlace, id)
 	var i LoadPlaceRow
@@ -537,6 +535,82 @@ func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
 		&i.LastDecisionAt,
 		&i.LastDecisionBy,
 		&i.LastDecisionApproved,
+	)
+	return i, err
+}
+
+const lookupPlace = `-- name: LookupPlace :one
+
+SELECT
+    elm.osm_type, elm.osm_id, elm.location, elm.tags, elm.lon, elm.lat, elm.name,  -- noqa
+    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
+FROM
+    osm2pgsql.element AS elm
+LEFT OUTER JOIN socialmaps.place_view AS plc
+    ON (
+        ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
+        AND elm."name" = plc."name"
+        AND plc."location" && ST_MAKEENVELOPE(
+            $1::double precision,
+            $2::double precision,
+            $3::double precision,
+            $4::double precision,
+            4326
+        )
+    )
+WHERE
+    elm."location" && ST_MAKEENVELOPE(
+        $1::double precision,
+        $2::double precision,
+        $3::double precision,
+        $4::double precision,
+        4326
+    )
+    AND similarity($5::varchar, elm.name) > 0.3
+ORDER BY
+    similarity($5::varchar, elm.name) DESC
+LIMIT -- noqa: AM09
+    1
+`
+
+type LookupPlaceRow struct {
+	Element       Element
+	OptionalPlace OptionalPlace
+}
+
+// TODO: we'll add order by later
+func (q *Queries) LookupPlace(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64, name string) (LookupPlaceRow, error) {
+	row := q.db.QueryRow(ctx, lookupPlace,
+		lonMin,
+		latMin,
+		lonMax,
+		latMax,
+		name,
+	)
+	var i LookupPlaceRow
+	err := row.Scan(
+		&i.Element.OsmType,
+		&i.Element.OsmID,
+		&i.Element.Location,
+		&i.Element.Tags,
+		&i.Element.Lon,
+		&i.Element.Lat,
+		&i.Element.Name,
+		&i.OptionalPlace.ID,
+		&i.OptionalPlace.Created,
+		&i.OptionalPlace.Updated,
+		&i.OptionalPlace.Name,
+		&i.OptionalPlace.Location,
+		&i.OptionalPlace.Lat,
+		&i.OptionalPlace.Lon,
+		&i.OptionalPlace.OsmType,
+		&i.OptionalPlace.OsmID,
+		&i.OptionalPlace.NLikes,
+		&i.OptionalPlace.NDislikes,
+		&i.OptionalPlace.DecNLikes,
+		&i.OptionalPlace.DecNDislikes,
+		&i.OptionalPlace.DecUpdatedAt,
+		&i.OptionalPlace.Score,
 	)
 	return i, err
 }

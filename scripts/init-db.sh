@@ -20,7 +20,8 @@ psql -h "${PG_HOST}" -p "${PG_PORT}" -v "ON_ERROR_STOP=1" \
 
 psql -h "${PG_HOST}" -p "${PG_PORT}" -v "ON_ERROR_STOP=1" \
     -U "${PG_USER_DEFAULT}" -d "socialmaps" \
-    -c "CREATE EXTENSION postgis;"
+    -c "CREATE EXTENSION postgis;" \
+    -c "CREATE EXTENSION pg_trgm;"
 
 psql -h "${PG_HOST}" -p "${PG_PORT}" -v "ON_ERROR_STOP=1" \
     -U "osm2pgsql" -d "socialmaps" \
