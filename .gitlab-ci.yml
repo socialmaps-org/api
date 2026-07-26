@@ -57,7 +57,7 @@ lint-go:
 lint-sql:
   stage: verify
   image:
-    name: docker.io/sqlfluff/sqlfluff:3.5.0
+    name: docker.io/sqlfluff/sqlfluff:4.2.2
     entrypoint: [""]
   script:
     - ./scripts/lint-sql.sh

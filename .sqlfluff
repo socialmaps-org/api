@@ -15,4 +15,4 @@ exclude_rules = ambiguous.column_count
 prefer_quoted_keywords = True
 
 [sqlfluff:templater:placeholder]
-param_regex = @(?P<param_name>\w+)
+param_regex = @\w+

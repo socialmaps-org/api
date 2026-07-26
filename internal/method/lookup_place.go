@@ -2,9 +2,8 @@ package method
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
 	"golang.socialmaps.org/api/internal/geo"
 	"golang.socialmaps.org/api/internal/model"
@@ -27,16 +26,12 @@ type lookupPlaceArgs struct {
 func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Response[resource.Place], error) {
 	bbox := geo.NewBBox(args.Lat, args.Lon, 50)
 
-	tuples, err := m.QS.QueryPlaces(ctx, bbox.South, bbox.North, bbox.West, bbox.East, fmt.Sprintf(`$.name == "%s"`, args.Name))
-	if err != nil && err != pgx.ErrNoRows {
-		return nil, err
+	tuple, err := m.QS.LookupPlace(ctx, bbox.South, bbox.North, bbox.West, bbox.East, args.Name)
+
+	if err == pgx.ErrNoRows {
+		return nil, huma.Error404NotFound("place not found")
 	}
 
-	if len(tuples) > 1 {
-		return nil, errors.New("internal server error")
-	}
-
-	tuple := tuples[0]
 	elm := tuple.Element
 	var plcM model.Place
 

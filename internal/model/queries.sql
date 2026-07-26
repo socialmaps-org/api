@@ -49,6 +49,38 @@ WHERE
 LIMIT -- noqa: AM09
     100; -- TODO: we'll add order by later
 
+-- name: LookupPlace :one
+SELECT
+    sqlc.embed(elm),  -- noqa
+    sqlc.embed(plc)  -- noqa
+FROM
+    osm2pgsql.element AS elm
+LEFT OUTER JOIN socialmaps.place_view AS plc
+    ON (
+        ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
+        AND elm."name" = plc."name"
+        AND plc."location" && ST_MAKEENVELOPE(
+            @lon_min::double precision,
+            @lat_min::double precision,
+            @lon_max::double precision,
+            @lat_max::double precision,
+            4326
+        )
+    )
+WHERE
+    elm."location" && ST_MAKEENVELOPE(
+        @lon_min::double precision,
+        @lat_min::double precision,
+        @lon_max::double precision,
+        @lat_max::double precision,
+        4326
+    )
+    AND SIMILARITY(@name::varchar, elm."name") > 0.5
+ORDER BY
+    SIMILARITY(@name::varchar, elm."name") DESC
+LIMIT -- noqa: AM09
+    1;
+
 -- name: LoadPlace :one
 SELECT
     sqlc.embed(elm),  -- noqa

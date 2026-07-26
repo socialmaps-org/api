@@ -87,3 +87,26 @@ func TestLookupExisting(t *testing.T) {
 	require.Equal(t, 43.7330475, j.Get[float64](plcR, "location", "lat"))
 	require.Equal(t, 7.4192941, j.Get[float64](plcR, "location", "lon"))
 }
+
+func TestLookupNotFound(t *testing.T) {
+	// Arrange
+	qs := model.New(database.OpenInTest(t))
+
+	authr := NewTestAuthenticator(t)
+	srv := NewTestServer(t, authr, qs)
+
+	// Act
+	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
+	require.NoError(t, err)
+	req.URL.RawQuery = url.Values{
+		"name": {"Does Not Exist"},
+		"lat":  {"43.733047"},
+		"lon":  {"7.419294"},
+	}.Encode()
+
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	// Assert
+	require.Equal(t, http.StatusNotFound, res.StatusCode)
+}

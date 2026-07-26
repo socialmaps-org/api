@@ -2,6 +2,7 @@
 -- `scripts/test-schema.sh`, does not get confused about the lack of PostGIS
 -- extension that we create in `scripts/init-db.sh`.
 CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE SCHEMA socialmaps AUTHORIZATION socialmaps_api;
 
@@ -78,7 +79,7 @@ CREATE VIEW socialmaps.place_view AS (
     FULL JOIN socialmaps.place AS plc ON TRUE
 );
 
-CREATE INDEX place_location ON socialmaps.place USING gist ("location");
+CREATE INDEX CONCURRENTLY place_location ON socialmaps.place USING gist ("location");
 
 CREATE TRIGGER on_update_of_immutables_on_place
 BEFORE UPDATE OF created ON socialmaps.place
@@ -143,14 +144,14 @@ CREATE TABLE socialmaps.review (
     )
 );
 
-CREATE INDEX review_latest_by_place
+CREATE INDEX CONCURRENTLY review_latest_by_place
 ON socialmaps.review (
     place_id,
     last_decision_approved,
     created DESC
 );
 
-CREATE INDEX review_top_by_place
+CREATE INDEX CONCURRENTLY review_top_by_place
 ON socialmaps.review (
     place_id,
     last_decision_approved,
@@ -158,7 +159,7 @@ ON socialmaps.review (
     created DESC
 );
 
-CREATE INDEX review_hot_by_place
+CREATE INDEX CONCURRENTLY review_hot_by_place
 ON socialmaps.review (
     place_id,
     last_decision_approved,
