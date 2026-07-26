@@ -110,3 +110,60 @@ func TestLookupNotFound(t *testing.T) {
 	// Assert
 	require.Equal(t, http.StatusNotFound, res.StatusCode)
 }
+
+func TestLookupSimilar(t *testing.T) {
+	// Arrange
+	qs := model.New(database.OpenInTest(t))
+
+	authr := NewTestAuthenticator(t)
+	srv := NewTestServer(t, authr, qs)
+
+	// Act
+	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
+	require.NoError(t, err)
+	req.URL.RawQuery = url.Values{
+		"name": {"Rose Gardn Fountn"},
+		"lat":  {"43.72725660716636"},
+		"lon":  {"7.419278485481369"},
+	}.Encode()
+
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	// Assert
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	var plcR any
+	err = json.NewDecoder(res.Body).Decode(&plcR)
+	require.NoError(t, err)
+	require.Equal(t, "Princess Grace Rose Garden Fountain", j.Get[string](plcR, "osm_tags", "name:en"))
+}
+
+func TestLookupAllNames(t *testing.T) {
+	// Arrange
+	qs := model.New(database.OpenInTest(t))
+
+	authr := NewTestAuthenticator(t)
+	srv := NewTestServer(t, authr, qs)
+
+	// Act
+	req, err := http.NewRequest("GET", srv.URL+"/v1/places/lookup", nil)
+	require.NoError(t, err)
+	req.URL.RawQuery = url.Values{
+		"name": {"聖母無染原罪主教座堂"},
+		"lat":  {"43.73034532355886"},
+		"lon":  {"7.422670485094905"},
+	}.Encode()
+
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	// Assert
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	var plcR any
+	err = json.NewDecoder(res.Body).Decode(&plcR)
+	require.NoError(t, err)
+	require.Equal(t, "Cathédrale Notre-Dame-Immaculée", j.Get[string](plcR, "name"))
+	require.Equal(t, "聖母無染原罪主教座堂", j.Get[string](plcR, "osm_tags", "name:zh"))
+}

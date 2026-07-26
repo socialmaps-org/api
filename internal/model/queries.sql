@@ -55,6 +55,12 @@ SELECT
     sqlc.embed(plc)  -- noqa
 FROM
     osm2pgsql.element AS elm
+CROSS JOIN
+    LATERAL (  -- noqa: ST05
+        SELECT SIMILARITY(@name::varchar, tag."value") AS best
+        FROM JSONB_EACH_TEXT(elm.tags) AS tag ("key", "value")
+        WHERE tag."key" IN ('name', 'int_name') OR tag."key" LIKE 'name:%'
+    ) AS sim
 LEFT OUTER JOIN socialmaps.place_view AS plc
     ON (
         ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
@@ -75,9 +81,9 @@ WHERE
         @lat_max::double precision,
         4326
     )
-    AND SIMILARITY(@name::varchar, elm."name") > 0.5
+    AND sim.best > 0.3
 ORDER BY
-    SIMILARITY(@name::varchar, elm."name") DESC
+    sim.best DESC
 LIMIT -- noqa: AM09
     1;
 
