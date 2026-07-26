@@ -26,7 +26,7 @@ type lookupPlaceArgs struct {
 func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Response[resource.Place], error) {
 	bbox := geo.NewBBox(args.Lat, args.Lon, 50)
 
-	tuple, err := m.QS.LookupPlace(ctx, bbox.West, bbox.South, bbox.East, bbox.North, args.Name)
+	tuple, err := m.QS.LookupPlace(ctx, args.Name, bbox.West, bbox.South, bbox.East, bbox.North)
 
 	if err == pgx.ErrNoRows {
 		return nil, huma.Error404NotFound("place not found")

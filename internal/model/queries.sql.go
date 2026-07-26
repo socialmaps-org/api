@@ -546,29 +546,35 @@ SELECT
     plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
 FROM
     osm2pgsql.element AS elm
+CROSS JOIN
+    LATERAL (  -- noqa: ST05
+        SELECT SIMILARITY($1::varchar, tag."value") AS best
+        FROM JSONB_EACH_TEXT(elm.tags) AS tag ("key", "value")
+        WHERE tag."key" IN ('name', 'int_name') OR tag."key" LIKE 'name:%'
+    ) AS sim
 LEFT OUTER JOIN socialmaps.place_view AS plc
     ON (
         ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
         AND elm."name" = plc."name"
         AND plc."location" && ST_MAKEENVELOPE(
-            $1::double precision,
             $2::double precision,
             $3::double precision,
             $4::double precision,
+            $5::double precision,
             4326
         )
     )
 WHERE
     elm."location" && ST_MAKEENVELOPE(
-        $1::double precision,
         $2::double precision,
         $3::double precision,
         $4::double precision,
+        $5::double precision,
         4326
     )
-    AND similarity($5::varchar, elm.name) > 0.3
+    AND sim.best > 0.3
 ORDER BY
-    similarity($5::varchar, elm.name) DESC
+    sim.best DESC
 LIMIT -- noqa: AM09
     1
 `
@@ -579,13 +585,13 @@ type LookupPlaceRow struct {
 }
 
 // TODO: we'll add order by later
-func (q *Queries) LookupPlace(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64, name string) (LookupPlaceRow, error) {
+func (q *Queries) LookupPlace(ctx context.Context, name string, lonMin float64, latMin float64, lonMax float64, latMax float64) (LookupPlaceRow, error) {
 	row := q.db.QueryRow(ctx, lookupPlace,
+		name,
 		lonMin,
 		latMin,
 		lonMax,
 		latMax,
-		name,
 	)
 	var i LookupPlaceRow
 	err := row.Scan(
