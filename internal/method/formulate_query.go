@@ -18,7 +18,7 @@ type FormulateQuery struct {
 }
 
 type formulateQueryArgs struct {
-	Query string `query:"query" doc:"A user query in natural language for querying **Place**s." example:"Turkish restaurants with outdoor seating"`
+	Query string `query:"query" doc:"A user query in natural language for querying **Place**s." example:"Historical tourist attractions"`
 }
 
 //go:embed system-prompt.md

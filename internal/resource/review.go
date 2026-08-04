@@ -8,13 +8,13 @@ import (
 
 type Review struct {
 	Object  string    `json:"object" enum:"review"`
-	ID      int64     `json:"id" minimum:"1" doc:"Unique identifier for this **Review**."`
-	Created int64     `json:"created" minimum:"0" doc:"The [UNIX timestamp](https://en.wikipedia.org/wiki/Unix_time) of when this **Review** was created."`
+	ID      int64     `json:"id" minimum:"1" doc:"Unique identifier for this **Review**." example:"1"`
+	Created int64     `json:"created" minimum:"0" doc:"The [UNIX timestamp](https://en.wikipedia.org/wiki/Unix_time) of when this **Review** was created." example:"1785628450"`
 	Place   PlaceStub `json:"place" doc:"The **Place** which this **Review** is about. This is a stub object, meaning it contains only an ID."`
 	User    UserStub  `json:"user" doc:"The **User** who created this **Review**. This is a stub object, meaning it contains only an ID."`
-	Liked   bool      `json:"liked" doc:"Whether the **User** liked this **Place** or not."`
-	Comment string    `json:"comment" doc:"The comment written by the **User** about this **Place**, if written. Otherwise can be an empty string."`
-	NLikes  uint64    `json:"n_likes" minimum:"0" doc:"The number of users who liked this **Review**."`
+	Liked   bool      `json:"liked" doc:"Whether the **User** liked this **Place** or not." example:"true"`
+	Comment string    `json:"comment" doc:"The comment written by the **User** about this **Place**, if written. Otherwise can be an empty string." example:"It’s one of the Seven Wonders of the Ancient World!"`
+	NLikes  uint64    `json:"n_likes" minimum:"0" doc:"The number of users who liked this **Review**." example:"34"`
 }
 
 type ReviewWithUser struct {
