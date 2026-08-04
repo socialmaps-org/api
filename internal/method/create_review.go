@@ -16,8 +16,8 @@ type CreateReview struct {
 }
 
 type createReviewBodyArg struct {
-	Liked   bool   `json:"liked" doc:"Whether the user liked this **Place** or not."`
-	Comment string `json:"comment" doc:"The comment written by the user about this **Place**, if written. Otherwise can be an empty string."`
+	Liked   bool   `json:"liked" doc:"Whether the user liked this **Place** or not." example:"true"`
+	Comment string `json:"comment" doc:"The comment written by the user about this **Place**, if written. Otherwise can be an empty string." example:"It’s one of the Seven Wonders of the Ancient World!"`
 }
 
 type createReviewArgs struct {

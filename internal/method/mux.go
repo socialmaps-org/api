@@ -51,6 +51,29 @@ func Mux(authr web.Authenticator, qs *model.Queries) *http.ServeMux {
 			},
 		},
 	}
+	config.Servers = []*huma.Server{
+		{
+			URL: "https://api.socialmaps.org",
+		},
+	}
+
+	config.OnAddOperation = append(
+		config.OnAddOperation,
+		// Change the name of error responses from "default" (the default name)
+		// to "Error" instead.
+		func(_ *huma.OpenAPI, op *huma.Operation) {
+			response, ok := op.Responses["default"]
+			if !ok {
+				return
+			}
+
+			delete(op.Responses, "default")
+
+			error := *response
+			error.Description = "Error"
+			op.Responses["Non-2xx"] = &error
+		},
+	)
 
 	api := humago.New(mux, config)
 
