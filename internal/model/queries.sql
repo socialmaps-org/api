@@ -108,6 +108,7 @@ INSERT INTO socialmaps.review (
     liked,
     "comment",
     created,
+    reviewed_at,
     updated,
     dec_updated_at
 )
@@ -117,6 +118,7 @@ VALUES (
     @liked,
     @comment,
     @as_of,
+    @reviewed_at,
     @as_of,
     @as_of
 ) RETURNING *;

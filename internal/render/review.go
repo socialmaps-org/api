@@ -12,9 +12,10 @@ func Review(m model.Review) resource.Review {
 	}
 
 	return resource.Review{
-		Object:  "review",
-		ID:      m.ID,
-		Created: m.Created.Unix(),
+		Object:     "review",
+		ID:         m.ID,
+		Created:    m.Created.Unix(),
+		ReviewedAt: m.ReviewedAt.Unix(),
 		Place: resource.PlaceStub{
 			ID: m.PlaceID,
 		},

@@ -23,7 +23,7 @@ func TestUnlikeReviewAuthorizationMissing(t *testing.T) {
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
 	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now(), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
@@ -54,7 +54,7 @@ func TestUnlikeReviewAuthorizationInactive(t *testing.T) {
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
 	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now(), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t)
@@ -87,7 +87,7 @@ func TestUnlikeReviewOthers(t *testing.T) {
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
 	usrC := must.Get(qs.CreateUser(ctx, now, 3, "Charlie"))
 	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now(), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrC.ID))
@@ -119,7 +119,7 @@ func TestUnlikeReview(t *testing.T) {
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
 	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now(), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID))
@@ -151,7 +151,7 @@ func TestUnlikeReviewIdempotent(t *testing.T) {
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
 	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now(), mytime.Now()))
 	must.Do(qs.LikeReview(ctx, rvw.ID, usrB.ID, mytime.Now()))
 
 	authr := NewTestAuthenticator(t, fmt.Sprint(usrB.ID), fmt.Sprint(usrB.ID))

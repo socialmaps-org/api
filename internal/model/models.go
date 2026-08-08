@@ -65,6 +65,7 @@ type Review struct {
 	Updated              time.Time
 	PlaceID              int64
 	UserID               int64
+	ReviewedAt           time.Time
 	Liked                bool
 	Comment              *string
 	NLikes               int64
