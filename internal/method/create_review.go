@@ -3,6 +3,7 @@ package method
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +19,8 @@ type CreateReview struct {
 type createReviewBodyArg struct {
 	Liked   bool   `json:"liked" doc:"Whether the user liked this **Place** or not." example:"true"`
 	Comment string `json:"comment" doc:"The comment written by the user about this **Place**, if written. Otherwise can be an empty string." example:"It’s one of the Seven Wonders of the Ancient World!"`
+
+	ReviewedAt *int64 `json:"reviewed_at,omitzero" doc:"The [UNIX timestamp](https://en.wikipedia.org/wiki/Unix_time) of when the **Place** was originally reviewed at, if different from now (such as while importing **Review**s from another platform). This cannot be in the future."`
 }
 
 type createReviewArgs struct {
@@ -43,7 +46,26 @@ func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) (*Re
 	}
 	plc := tuple.Place
 
-	rvwM, err := m.QS.CreateReview(ctx, plc.ID, usr.ID, args.Body.Liked, &args.Body.Comment, mytime.Now())
+	now := mytime.Now()
+	var reviewedAt time.Time
+	if args.Body.ReviewedAt != nil {
+		reviewedAt = time.Unix(*args.Body.ReviewedAt, 0)
+	} else {
+		reviewedAt = now
+	}
+
+	if reviewedAt.After(now) {
+		return nil, huma.Error400BadRequest(
+			"reviewed_at cannot be in the future",
+			&huma.ErrorDetail{
+				Message:  "reviewed_at cannot be in the future",
+				Location: "body.reviewed_at",
+				Value:    args.Body.ReviewedAt,
+			},
+		)
+	}
+
+	rvwM, err := m.QS.CreateReview(ctx, plc.ID, usr.ID, args.Body.Liked, &args.Body.Comment, now, reviewedAt)
 	if err != nil {
 		return nil, err
 	}

@@ -30,10 +30,10 @@ func TestListReviews(t *testing.T) {
 	usrA := must.Get(qs.CreateUser(ctx, now, 1, "Alice"))
 	usrB := must.Get(qs.CreateUser(ctx, now, 2, "Bob"))
 	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
-	rvwA := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now()))
+	rvwA := must.Get(qs.CreateReview(ctx, plc.ID, usrA.ID, true, new("I like it!"), mytime.Now(), mytime.Now()))
 	must.Get(qs.CreateReviewDecision(ctx, now, rvwA.ID, "test-mod", true, ""))
 	mockClock.Add(24 * time.Hour)
-	rvwB := must.Get(qs.CreateReview(ctx, plc.ID, usrB.ID, false, new("I don't like it!"), mytime.Now()))
+	rvwB := must.Get(qs.CreateReview(ctx, plc.ID, usrB.ID, false, new("I don't like it!"), mytime.Now(), mytime.Now()))
 	must.Get(qs.CreateReviewDecision(ctx, now, rvwB.ID, "test-mod", true, ""))
 
 	authr := NewTestAuthenticator(t)

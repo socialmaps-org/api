@@ -105,3 +105,41 @@ func TestCreateReview(t *testing.T) {
 	require.True(t, rvwM.Liked)
 	require.Equal(t, "I liked it!", *rvwM.Comment)
 }
+
+func TestCreateReviewInFuture(t *testing.T) {
+	// Arrange
+	ctx := t.Context()
+
+	qs := model.New(database.OpenInTest(t))
+	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
+
+	authr := NewTestAuthenticator(t, "1")
+	srv := NewTestServer(t, authr, qs)
+
+	// Act
+	req, err := http.NewRequest(
+		"POST", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID),
+		strings.NewReader(`{"liked": true, "comment": "I liked it!", "reviewed_at": 2524608000}`),
+	)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer my-auth-token")
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	// Assert
+	require.Equal(t, 1, authr.nIntrospectCalls)
+
+	require.Equal(t, http.StatusBadRequest, res.StatusCode)
+
+	var errR any
+	err = json.NewDecoder(res.Body).Decode(&errR)
+	require.NoError(t, err)
+	require.Equal(t, int64(http.StatusBadRequest), j.Get[int64](errR, "status"))
+	require.Equal(t, "reviewed_at cannot be in the future", j.Get[string](errR, "detail"))
+	require.Equal(t, 1, len(j.Get[[]any](errR, "errors")))
+	require.Equal(t, "body.reviewed_at", j.Get[string](errR, "errors", 0, "location"))
+	require.Equal(t, "reviewed_at cannot be in the future", j.Get[string](errR, "errors", 0, "message"))
+	require.Equal(t, int64(2524608000), j.Get[int64](errR, "errors", 0, "value"))
+}

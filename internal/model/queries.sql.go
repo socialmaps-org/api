@@ -69,6 +69,7 @@ INSERT INTO socialmaps.review (
     liked,
     "comment",
     created,
+    reviewed_at,
     updated,
     dec_updated_at
 )
@@ -78,18 +79,20 @@ VALUES (
     $3,
     $4,
     $5,
+    $6,
     $5,
     $5
-) RETURNING id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+) RETURNING id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 `
 
-func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64, liked bool, comment *string, asOf time.Time) (Review, error) {
+func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64, liked bool, comment *string, asOf time.Time, reviewedAt time.Time) (Review, error) {
 	row := q.db.QueryRow(ctx, createReview,
 		placeID,
 		userID,
 		liked,
 		comment,
 		asOf,
+		reviewedAt,
 	)
 	var i Review
 	err := row.Scan(
@@ -98,6 +101,7 @@ func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64,
 		&i.Updated,
 		&i.PlaceID,
 		&i.UserID,
+		&i.ReviewedAt,
 		&i.Liked,
 		&i.Comment,
 		&i.NLikes,
@@ -204,7 +208,7 @@ func (q *Queries) LikeReview(ctx context.Context, reviewID int64, userID int64, 
 }
 
 const listEarliestUnapprovedReviews = `-- name: ListEarliestUnapprovedReviews :many
-SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+SELECT id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 FROM socialmaps.review
 WHERE
     last_decision_approved IS NULL
@@ -232,6 +236,7 @@ func (q *Queries) ListEarliestUnapprovedReviews(ctx context.Context, lastCreated
 			&i.Updated,
 			&i.PlaceID,
 			&i.UserID,
+			&i.ReviewedAt,
 			&i.Liked,
 			&i.Comment,
 			&i.NLikes,
@@ -252,7 +257,7 @@ func (q *Queries) ListEarliestUnapprovedReviews(ctx context.Context, lastCreated
 }
 
 const listHottestApprovedReviewsOfPlace = `-- name: ListHottestApprovedReviewsOfPlace :many
-SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+SELECT id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 FROM socialmaps.review
 WHERE
     place_id = $1
@@ -286,6 +291,7 @@ func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID
 			&i.Updated,
 			&i.PlaceID,
 			&i.UserID,
+			&i.ReviewedAt,
 			&i.Liked,
 			&i.Comment,
 			&i.NLikes,
@@ -307,7 +313,7 @@ func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID
 
 const listLatestApprovedReviewsOfPlace = `-- name: ListLatestApprovedReviewsOfPlace :many
 SELECT
-    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.liked, rvw.comment, rvw.n_likes, rvw.dec_n_likes, rvw.dec_updated_at, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
+    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.reviewed_at, rvw.liked, rvw.comment, rvw.n_likes, rvw.dec_n_likes, rvw.dec_updated_at, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
     usr.id, usr.created, usr.updated, usr.display_name -- noqa
 FROM socialmaps.review AS rvw
 INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
@@ -348,6 +354,7 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 			&i.Review.Updated,
 			&i.Review.PlaceID,
 			&i.Review.UserID,
+			&i.Review.ReviewedAt,
 			&i.Review.Liked,
 			&i.Review.Comment,
 			&i.Review.NLikes,
@@ -373,7 +380,7 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 
 const listLatestApprovedReviewsOfPlaceReverse = `-- name: ListLatestApprovedReviewsOfPlaceReverse :many
 SELECT
-    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.liked, rvw.comment, rvw.n_likes, rvw.dec_n_likes, rvw.dec_updated_at, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
+    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.reviewed_at, rvw.liked, rvw.comment, rvw.n_likes, rvw.dec_n_likes, rvw.dec_updated_at, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
     usr.id, usr.created, usr.updated, usr.display_name -- noqa
 FROM socialmaps.review AS rvw
 INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
@@ -414,6 +421,7 @@ func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, p
 			&i.Review.Updated,
 			&i.Review.PlaceID,
 			&i.Review.UserID,
+			&i.Review.ReviewedAt,
 			&i.Review.Liked,
 			&i.Review.Comment,
 			&i.Review.NLikes,
@@ -512,7 +520,7 @@ func (q *Queries) LoadPlace(ctx context.Context, id int64) (LoadPlaceRow, error)
 }
 
 const loadReview = `-- name: LoadReview :one
-SELECT id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+SELECT id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 FROM socialmaps.review
 WHERE
     id = $1
@@ -527,6 +535,7 @@ func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
 		&i.Updated,
 		&i.PlaceID,
 		&i.UserID,
+		&i.ReviewedAt,
 		&i.Liked,
 		&i.Comment,
 		&i.NLikes,
@@ -725,7 +734,7 @@ UPDATE socialmaps.review SET
     updated = $4
 WHERE
     id = $3
-RETURNING id, created, updated, place_id, user_id, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+RETURNING id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
 `
 
 func (q *Queries) UpdateReview(ctx context.Context, liked bool, comment *string, iD int64, asOf time.Time) (Review, error) {
@@ -742,6 +751,7 @@ func (q *Queries) UpdateReview(ctx context.Context, liked bool, comment *string,
 		&i.Updated,
 		&i.PlaceID,
 		&i.UserID,
+		&i.ReviewedAt,
 		&i.Liked,
 		&i.Comment,
 		&i.NLikes,

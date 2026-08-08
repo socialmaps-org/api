@@ -125,6 +125,12 @@ CREATE TABLE socialmaps.review (
     updated TIMESTAMP WITH TIME ZONE NOT NULL,
     place_id BIGINT NOT NULL REFERENCES socialmaps.place (id),
     user_id BIGINT NOT NULL REFERENCES socialmaps."user" (id),
+    -- `reviewed_at` is when the reviewed the Place.
+    --
+    -- `created` and `reviewed_at` values be different for reviews that are
+    -- imported from other platforms, as those would be written long before
+    -- they are added into Social Maps.
+    reviewed_at TIMESTAMP WITH TIME ZONE NOT NULL,
     liked BOOLEAN NOT NULL,
     "comment" TEXT,
     n_likes BIGINT NOT NULL DEFAULT 0,
