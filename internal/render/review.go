@@ -22,7 +22,7 @@ func Review(m model.Review) resource.Review {
 		User: resource.UserStub{
 			ID: m.UserID,
 		},
-		Liked:   m.Liked,
+		Rating:  int(m.Rating),
 		Comment: comment,
 	}
 }

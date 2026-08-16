@@ -20,7 +20,7 @@ check-scripts:
 
 check-vuln:
   stage: verify
-  image: docker.io/golang:1.26.5-trixie
+  image: docker.io/golang:1.26.6-trixie
   before_script:
     - go install golang.org/x/vuln/cmd/govulncheck@latest
   script:
@@ -28,7 +28,7 @@ check-vuln:
 
 check-format:
   stage: verify
-  image: docker.io/golang:1.26.5-trixie
+  image: docker.io/golang:1.26.6-trixie
   script:
     - ./scripts/check-format.sh
 
@@ -42,7 +42,7 @@ check-lua-format:
 
 check-deadcode:
   stage: verify
-  image: docker.io/golang:1.26.5-trixie
+  image: docker.io/golang:1.26.6-trixie
   before_script:
     - go install golang.org/x/tools/cmd/deadcode@latest
   script:
@@ -77,7 +77,7 @@ lint-lua:
 
 test:
   stage: test
-  image: docker.io/golang:1.26.5-trixie
+  image: docker.io/golang:1.26.6-trixie
   services:
     - name: docker.io/postgis/postgis:18-3.6
       alias: postgres

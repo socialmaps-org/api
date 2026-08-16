@@ -17,7 +17,7 @@ type CreateReview struct {
 }
 
 type createReviewBodyArg struct {
-	Liked   bool   `json:"liked" doc:"Whether the user liked this **Place** or not." example:"true"`
+	Rating  int    `json:"rating" doc:"The star rating the **User** gives to the **Place**." example:"5" minimum:"1" maximum:"5"`
 	Comment string `json:"comment" doc:"The comment written by the user about this **Place**, if written. Otherwise can be an empty string." example:"It’s one of the Seven Wonders of the Ancient World!"`
 
 	ReviewedAt *int64 `json:"reviewed_at,omitzero" doc:"The [UNIX timestamp](https://en.wikipedia.org/wiki/Unix_time) of when the **Place** was originally reviewed at, if different from now (such as while importing **Review**s from another platform). This cannot be in the future."`
@@ -44,7 +44,7 @@ func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) (*Re
 		}
 		return nil, err
 	}
-	plc := tuple.Place
+	plc := tuple.ComputedPlace
 
 	now := mytime.Now()
 	var reviewedAt time.Time
@@ -65,7 +65,7 @@ func (m *CreateReview) Execute(ctx context.Context, args *createReviewArgs) (*Re
 		)
 	}
 
-	rvwM, err := m.QS.CreateReview(ctx, plc.ID, usr.ID, args.Body.Liked, &args.Body.Comment, now, reviewedAt)
+	rvwM, err := m.QS.CreateReview(ctx, plc.ID, usr.ID, int32(args.Body.Rating), &args.Body.Comment, now, reviewedAt)
 	if err != nil {
 		return nil, err
 	}

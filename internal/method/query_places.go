@@ -30,10 +30,10 @@ func (m *QueryPlaces) Execute(ctx context.Context, args *queryPlacesArgs) (*Resp
 	plcRs := make([]resource.Place, len(tuples))
 	for i, tuple := range tuples {
 		elm := tuple.Element
-		var plcM model.Place
+		var plcM model.ComputedPlace
 
-		if tuple.OptionalPlace.IsNil() {
-			plcM, err = m.QS.CreatePlace(
+		if tuple.OptionalComputedPlace.IsNil() {
+			plc, err := m.QS.CreatePlace(
 				ctx,
 				elm.Name,
 				elm.Lon,
@@ -45,8 +45,9 @@ func (m *QueryPlaces) Execute(ctx context.Context, args *queryPlacesArgs) (*Resp
 			if err != nil {
 				return nil, err
 			}
+			plcM = model.NewPlaceToComputedPlace(plc)
 		} else {
-			plcM = tuple.OptionalPlace.Unwrap()
+			plcM = tuple.OptionalComputedPlace.Unwrap()
 		}
 
 		plcRs[i] = render.Place(plcM, elm)

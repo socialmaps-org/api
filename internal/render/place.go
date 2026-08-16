@@ -5,15 +5,7 @@ import (
 	"golang.socialmaps.org/api/internal/resource"
 )
 
-func Place(m model.Place, e model.Element) resource.Place {
-	count := m.NLikes + m.NDislikes
-	var likeRatio *float64
-	if count != 0 {
-		t := float64(m.NLikes) / float64(m.NLikes+m.NDislikes)
-		likeRatio = &t
-	}
-	score := (m.DecNLikes + 1.0) / ((m.DecNLikes + 1.0) + (m.DecNDislikes + 1.0))
-
+func Place(m model.ComputedPlace, e model.Element) resource.Place {
 	return resource.Place{
 		Object: "place",
 		ID:     m.ID,
@@ -22,10 +14,11 @@ func Place(m model.Place, e model.Element) resource.Place {
 			Lat: m.Lat,
 			Lon: m.Lon,
 		},
-		ReviewStats: resource.ReviewStats{
-			Count:     count,
-			LikeRatio: likeRatio,
-			Score:     score,
+		ReviewSummary: resource.ReviewSummary{
+			Count: m.NReviews,
+			Rating: resource.RatingSummary{
+				Average: m.AvgRating,
+			},
 		},
 		OSMType: e.OsmType,
 		OSMID:   e.OsmID,

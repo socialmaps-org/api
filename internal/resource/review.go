@@ -13,9 +13,8 @@ type Review struct {
 	ReviewedAt int64     `json:"reviewed_at" minimum:"0" doc:"The [UNIX timestamp](https://en.wikipedia.org/wiki/Unix_time) of when the **Place** was originally reviewed at. This might be different for **Review**s that imported from other platforms. This is always less than or equal to 'created'." example:"1785628450"`
 	Place      PlaceStub `json:"place" doc:"The **Place** which this **Review** is about. This is a stub object, meaning it contains only an ID."`
 	User       UserStub  `json:"user" doc:"The **User** who created this **Review**. This is a stub object, meaning it contains only an ID."`
-	Liked      bool      `json:"liked" doc:"Whether the **User** liked this **Place** or not." example:"true"`
+	Rating     int       `json:"rating" doc:"The star rating the **User** gave to the **Place**." example:"5" minimum:"1" maximum:"5"`
 	Comment    string    `json:"comment" doc:"The comment written by the **User** about this **Place**, if written. Otherwise can be an empty string." example:"It’s one of the Seven Wonders of the Ancient World!"`
-	NLikes     uint64    `json:"n_likes" minimum:"0" doc:"The number of users who liked this **Review**." example:"34"`
 }
 
 type ReviewWithUser struct {

@@ -26,7 +26,7 @@ func (m *RetrievePlace) Execute(ctx context.Context, args *retrievePlaceArgs) (*
 		return nil, err
 	}
 
-	plcR := render.Place(tuple.Place, tuple.Element)
+	plcR := render.Place(tuple.ComputedPlace, tuple.Element)
 
 	return &Response[resource.Place]{Body: plcR}, nil
 }

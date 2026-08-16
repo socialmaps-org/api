@@ -20,7 +20,7 @@ func TestProduce(t *testing.T) {
 	qs := model.New(db)
 	plc := must.Get(qs.CreatePlace(ctx, "Woo", 7.4192941, 43.7330475, model.OSMTypeNode, 12802966710, mytime.Now()))
 	usr := must.Get(qs.CreateUser(ctx, now, 1, "Steve"))
-	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, true, new("great little cafe!"), mytime.Now(), mytime.Now()))
+	rvw := must.Get(qs.CreateReview(ctx, plc.ID, usr.ID, 4, new("great little cafe!"), mytime.Now(), mytime.Now()))
 
 	ch := make(chan model.Review, 1)
 

@@ -8,6 +8,20 @@ import (
 	"time"
 )
 
+type ComputedPlace struct {
+	ID        int64
+	Created   time.Time
+	Updated   time.Time
+	Name      string
+	Location  interface{}
+	Lat       float64
+	Lon       float64
+	OsmType   string
+	OsmID     int64
+	NReviews  int64
+	AvgRating *float64
+}
+
 type Element struct {
 	OsmType  string
 	OsmID    int64
@@ -18,22 +32,18 @@ type Element struct {
 	Name     string
 }
 
-type OptionalPlace struct {
-	ID           *int64
-	Created      *time.Time
-	Updated      *time.Time
-	Name         *string
-	Location     interface{}
-	Lat          *float64
-	Lon          *float64
-	OsmType      *string
-	OsmID        *int64
-	NLikes       *int64
-	NDislikes    *int64
-	DecNLikes    *float64
-	DecNDislikes *float64
-	DecUpdatedAt *time.Time
-	Score        *float64
+type OptionalComputedPlace struct {
+	ID        *int64
+	Created   *time.Time
+	Updated   *time.Time
+	Name      *string
+	Location  interface{}
+	Lat       *float64
+	Lon       *float64
+	OsmType   *string
+	OsmID     *int64
+	NReviews  *int64
+	AvgRating *float64
 }
 
 type Osm2pgsqlOsm2pgsqlProperty struct {
@@ -42,21 +52,15 @@ type Osm2pgsqlOsm2pgsqlProperty struct {
 }
 
 type Place struct {
-	ID           int64
-	Created      time.Time
-	Updated      time.Time
-	Name         string
-	Location     interface{}
-	Lat          float64
-	Lon          float64
-	OsmType      string
-	OsmID        int64
-	NLikes       int64
-	NDislikes    int64
-	DecNLikes    float64
-	DecNDislikes float64
-	DecUpdatedAt time.Time
-	Score        float64
+	ID       int64
+	Created  time.Time
+	Updated  time.Time
+	Name     string
+	Location interface{}
+	Lat      float64
+	Lon      float64
+	OsmType  string
+	OsmID    int64
 }
 
 type Review struct {
@@ -66,11 +70,8 @@ type Review struct {
 	PlaceID              int64
 	UserID               int64
 	ReviewedAt           time.Time
-	Liked                bool
+	Rating               int32
 	Comment              *string
-	NLikes               int64
-	DecNLikes            float64
-	DecUpdatedAt         time.Time
 	LastDecisionAt       *time.Time
 	LastDecisionBy       *string
 	LastDecisionApproved *bool
@@ -83,13 +84,6 @@ type ReviewDecision struct {
 	Moderator string
 	Approved  bool
 	Details   string
-}
-
-type ReviewLike struct {
-	ID       int64
-	Created  time.Time
-	ReviewID int64
-	UserID   int64
 }
 
 type User struct {

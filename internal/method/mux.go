@@ -208,47 +208,5 @@ func Mux(authr web.Authenticator, qs *model.Queries) *http.ServeMux {
 		Common: c,
 	}).Execute)
 
-	huma.Register(api, huma.Operation{
-		OperationID: "like_review",
-		Method:      http.MethodPut,
-		Path:        "/v1/reviews/{review_id}/like",
-		Summary:     "Like a Review",
-		Description: multiline.Dedent(`
-			Like a **Review**.
-
-			A **User** cannot like their own **Review**.
-		`),
-		Tags:          []string{"Reviews"},
-		DefaultStatus: http.StatusNoContent,
-		Middlewares: huma.Middlewares{
-			GetAuthMiddleware(api, authr, qs),
-		},
-		Security: []map[string][]string{
-			{"oauth2": {"reviews:write"}},
-		},
-	}, (&LikeReview{
-		Common: c,
-	}).Execute)
-
-	huma.Register(api, huma.Operation{
-		OperationID: "unlike_review",
-		Method:      http.MethodPut,
-		Path:        "/v1/reviews/{review_id}/unlike",
-		Summary:     "Unlike a Review",
-		Description: multiline.Dedent(`
-			Unlike a Review.
-		`),
-		Tags:          []string{"Reviews"},
-		DefaultStatus: http.StatusNoContent,
-		Middlewares: huma.Middlewares{
-			GetAuthMiddleware(api, authr, qs),
-		},
-		Security: []map[string][]string{
-			{"oauth2": {"reviews:write"}},
-		},
-	}, (&UnlikeReview{
-		Common: c,
-	}).Execute)
-
 	return mux
 }
