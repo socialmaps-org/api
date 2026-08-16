@@ -5,15 +5,13 @@ INSERT INTO socialmaps.place (
     osm_type,
     osm_id,
     created,
-    updated,
-    dec_updated_at
+    updated
 )
 VALUES (
     @name,
     ST_POINT(@lon::double precision, @lat::double precision, 4326),
     @osm_type,
     @osm_id,
-    @as_of,
     @as_of,
     @as_of
 )
@@ -25,7 +23,7 @@ SELECT DISTINCT ON (elm."name") -- TODO: buggy. we want to allow same named POIs
     sqlc.embed(plc)  -- noqa
 FROM
     osm2pgsql.element AS elm
-LEFT OUTER JOIN socialmaps.place_view AS plc
+LEFT OUTER JOIN socialmaps.optional_computed_place AS plc
     ON (
         ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
         AND elm."name" = plc."name"
@@ -61,7 +59,7 @@ CROSS JOIN
         FROM JSONB_EACH_TEXT(elm.tags) AS tag ("key", "value")
         WHERE tag."key" IN ('name', 'int_name') OR tag."key" LIKE 'name:%'
     ) AS sim
-LEFT OUTER JOIN socialmaps.place_view AS plc
+LEFT OUTER JOIN socialmaps.optional_computed_place AS plc
     ON (
         ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
         AND elm."name" = plc."name"
@@ -92,7 +90,7 @@ SELECT
     sqlc.embed(elm),  -- noqa
     sqlc.embed(plc)  -- noqa
 FROM
-    socialmaps.place AS plc
+    socialmaps.computed_place AS plc
 INNER JOIN osm2pgsql.element AS elm
     ON (
         ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
@@ -105,21 +103,19 @@ WHERE
 INSERT INTO socialmaps.review (
     place_id,
     user_id,
-    liked,
+    rating,
     "comment",
     created,
     reviewed_at,
-    updated,
-    dec_updated_at
+    updated
 )
 VALUES (
     @place_id,
     @user_id,
-    @liked,
+    @rating,
     @comment,
     @as_of,
     @reviewed_at,
-    @as_of,
     @as_of
 ) RETURNING *;
 
@@ -130,7 +126,7 @@ WHERE
 
 -- name: UpdateReview :one
 UPDATE socialmaps.review SET
-    liked = $1,
+    rating = $1,
     "comment" = $2,
     updated = @as_of
 WHERE
@@ -143,20 +139,6 @@ SELECT *
 FROM socialmaps.review
 WHERE
     id = $1;
-
--- name: ListHottestApprovedReviewsOfPlace :many
-SELECT *
-FROM socialmaps.review
-WHERE
-    place_id = $1
-    AND last_decision_approved
-    AND dec_n_likes <= @last_dec_n_likes
-    AND id < @last_id
-ORDER BY
-    dec_n_likes DESC,
-    id DESC
-LIMIT
-    $2;
 
 -- name: ListLatestApprovedReviewsOfPlace :many
 SELECT
@@ -204,24 +186,6 @@ ORDER BY
     id ASC
 LIMIT
     @lim;
-
--- name: LikeReview :exec
-INSERT INTO socialmaps.review_like (
-    review_id,
-    user_id,
-    created
-) VALUES (
-    @review_id,
-    @user_id,
-    @as_of
-)
-ON CONFLICT DO NOTHING;
-
--- name: UnlikeReview :exec
-DELETE FROM socialmaps.review_like
-WHERE
-    review_id = $1
-    AND user_id = $2;
 
 -- name: CreateUser :one
 INSERT INTO socialmaps."user" (

@@ -33,10 +33,10 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 	}
 
 	elm := tuple.Element
-	var plcM model.Place
+	var plcM model.ComputedPlace
 
-	if tuple.OptionalPlace.IsNil() {
-		plcM, err = m.QS.CreatePlace(
+	if tuple.OptionalComputedPlace.IsNil() {
+		plc, err := m.QS.CreatePlace(
 			ctx,
 			elm.Name,
 			elm.Lon,
@@ -48,8 +48,9 @@ func (m *LookupPlace) Execute(ctx context.Context, args *lookupPlaceArgs) (*Resp
 		if err != nil {
 			return nil, err
 		}
+		plcM = model.NewPlaceToComputedPlace(plc)
 	} else {
-		plcM = tuple.OptionalPlace.Unwrap()
+		plcM = tuple.OptionalComputedPlace.Unwrap()
 	}
 	return &Response[resource.Place]{Body: render.Place(plcM, elm)}, nil
 }

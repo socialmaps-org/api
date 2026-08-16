@@ -15,12 +15,12 @@ sql:
         emit_pointers_for_null_types: true
 
         rename:
+          socialmaps_computed_place: ComputedPlace
+          socialmaps_optional_computed_place: OptionalComputedPlace
           socialmaps_user: User
           socialmaps_place: Place
-          socialmaps_place_view: OptionalPlace
           socialmaps_review: Review
           socialmaps_review_decision: ReviewDecision
-          socialmaps_review_like: ReviewLike
           osm2pgsql_element: Element
         overrides:
           - db_type: "pg_catalog.timestamptz"
@@ -36,3 +36,8 @@ sql:
           - column: "osm2pgsql.element.tags"
             go_type:
               type: "map[string]string"
+          # https://github.com/sqlc-dev/sqlc/issues/3028
+          - column: "socialmaps.computed_place.avg_rating"
+            go_type:
+              type: "float64"
+              pointer: true

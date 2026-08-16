@@ -40,6 +40,10 @@ func Get[T any](v any, path ...any) (r T) {
 	switch any(r).(type) {
 	case int64:
 		return any(int64(f64)).(T)
+	case int32:
+		return any(int32(f64)).(T)
+	case int:
+		return any(int(f64)).(T)
 	default:
 		panic("unsupported type")
 	}

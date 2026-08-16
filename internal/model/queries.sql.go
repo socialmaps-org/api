@@ -17,8 +17,7 @@ INSERT INTO socialmaps.place (
     osm_type,
     osm_id,
     created,
-    updated,
-    dec_updated_at
+    updated
 )
 VALUES (
     $1,
@@ -26,10 +25,9 @@ VALUES (
     $4,
     $5,
     $6,
-    $6,
     $6
 )
-RETURNING id, created, updated, name, location, lat, lon, osm_type, osm_id, n_likes, n_dislikes, dec_n_likes, dec_n_dislikes, dec_updated_at, score
+RETURNING id, created, updated, name, location, lat, lon, osm_type, osm_id
 `
 
 func (q *Queries) CreatePlace(ctx context.Context, name string, lon float64, lat float64, osmType string, osmID int64, asOf time.Time) (Place, error) {
@@ -52,12 +50,6 @@ func (q *Queries) CreatePlace(ctx context.Context, name string, lon float64, lat
 		&i.Lon,
 		&i.OsmType,
 		&i.OsmID,
-		&i.NLikes,
-		&i.NDislikes,
-		&i.DecNLikes,
-		&i.DecNDislikes,
-		&i.DecUpdatedAt,
-		&i.Score,
 	)
 	return i, err
 }
@@ -66,12 +58,11 @@ const createReview = `-- name: CreateReview :one
 INSERT INTO socialmaps.review (
     place_id,
     user_id,
-    liked,
+    rating,
     "comment",
     created,
     reviewed_at,
-    updated,
-    dec_updated_at
+    updated
 )
 VALUES (
     $1,
@@ -80,16 +71,15 @@ VALUES (
     $4,
     $5,
     $6,
-    $5,
     $5
-) RETURNING id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+) RETURNING id, created, updated, place_id, user_id, reviewed_at, rating, comment, last_decision_at, last_decision_by, last_decision_approved
 `
 
-func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64, liked bool, comment *string, asOf time.Time, reviewedAt time.Time) (Review, error) {
+func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64, rating int32, comment *string, asOf time.Time, reviewedAt time.Time) (Review, error) {
 	row := q.db.QueryRow(ctx, createReview,
 		placeID,
 		userID,
-		liked,
+		rating,
 		comment,
 		asOf,
 		reviewedAt,
@@ -102,11 +92,8 @@ func (q *Queries) CreateReview(ctx context.Context, placeID int64, userID int64,
 		&i.PlaceID,
 		&i.UserID,
 		&i.ReviewedAt,
-		&i.Liked,
+		&i.Rating,
 		&i.Comment,
-		&i.NLikes,
-		&i.DecNLikes,
-		&i.DecUpdatedAt,
 		&i.LastDecisionAt,
 		&i.LastDecisionBy,
 		&i.LastDecisionApproved,
@@ -189,26 +176,8 @@ func (q *Queries) DeleteReview(ctx context.Context, id int64) error {
 	return err
 }
 
-const likeReview = `-- name: LikeReview :exec
-INSERT INTO socialmaps.review_like (
-    review_id,
-    user_id,
-    created
-) VALUES (
-    $1,
-    $2,
-    $3
-)
-ON CONFLICT DO NOTHING
-`
-
-func (q *Queries) LikeReview(ctx context.Context, reviewID int64, userID int64, asOf time.Time) error {
-	_, err := q.db.Exec(ctx, likeReview, reviewID, userID, asOf)
-	return err
-}
-
 const listEarliestUnapprovedReviews = `-- name: ListEarliestUnapprovedReviews :many
-SELECT id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+SELECT id, created, updated, place_id, user_id, reviewed_at, rating, comment, last_decision_at, last_decision_by, last_decision_approved
 FROM socialmaps.review
 WHERE
     last_decision_approved IS NULL
@@ -237,66 +206,8 @@ func (q *Queries) ListEarliestUnapprovedReviews(ctx context.Context, lastCreated
 			&i.PlaceID,
 			&i.UserID,
 			&i.ReviewedAt,
-			&i.Liked,
+			&i.Rating,
 			&i.Comment,
-			&i.NLikes,
-			&i.DecNLikes,
-			&i.DecUpdatedAt,
-			&i.LastDecisionAt,
-			&i.LastDecisionBy,
-			&i.LastDecisionApproved,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listHottestApprovedReviewsOfPlace = `-- name: ListHottestApprovedReviewsOfPlace :many
-SELECT id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
-FROM socialmaps.review
-WHERE
-    place_id = $1
-    AND last_decision_approved
-    AND dec_n_likes <= $3
-    AND id < $4
-ORDER BY
-    dec_n_likes DESC,
-    id DESC
-LIMIT
-    $2
-`
-
-func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID int64, limit int32, lastDecNLikes float64, lastID int64) ([]Review, error) {
-	rows, err := q.db.Query(ctx, listHottestApprovedReviewsOfPlace,
-		placeID,
-		limit,
-		lastDecNLikes,
-		lastID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Review
-	for rows.Next() {
-		var i Review
-		if err := rows.Scan(
-			&i.ID,
-			&i.Created,
-			&i.Updated,
-			&i.PlaceID,
-			&i.UserID,
-			&i.ReviewedAt,
-			&i.Liked,
-			&i.Comment,
-			&i.NLikes,
-			&i.DecNLikes,
-			&i.DecUpdatedAt,
 			&i.LastDecisionAt,
 			&i.LastDecisionBy,
 			&i.LastDecisionApproved,
@@ -313,7 +224,7 @@ func (q *Queries) ListHottestApprovedReviewsOfPlace(ctx context.Context, placeID
 
 const listLatestApprovedReviewsOfPlace = `-- name: ListLatestApprovedReviewsOfPlace :many
 SELECT
-    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.reviewed_at, rvw.liked, rvw.comment, rvw.n_likes, rvw.dec_n_likes, rvw.dec_updated_at, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
+    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.reviewed_at, rvw.rating, rvw.comment, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
     usr.id, usr.created, usr.updated, usr.display_name -- noqa
 FROM socialmaps.review AS rvw
 INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
@@ -355,11 +266,8 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 			&i.Review.PlaceID,
 			&i.Review.UserID,
 			&i.Review.ReviewedAt,
-			&i.Review.Liked,
+			&i.Review.Rating,
 			&i.Review.Comment,
-			&i.Review.NLikes,
-			&i.Review.DecNLikes,
-			&i.Review.DecUpdatedAt,
 			&i.Review.LastDecisionAt,
 			&i.Review.LastDecisionBy,
 			&i.Review.LastDecisionApproved,
@@ -380,7 +288,7 @@ func (q *Queries) ListLatestApprovedReviewsOfPlace(ctx context.Context, placeID 
 
 const listLatestApprovedReviewsOfPlaceReverse = `-- name: ListLatestApprovedReviewsOfPlaceReverse :many
 SELECT
-    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.reviewed_at, rvw.liked, rvw.comment, rvw.n_likes, rvw.dec_n_likes, rvw.dec_updated_at, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
+    rvw.id, rvw.created, rvw.updated, rvw.place_id, rvw.user_id, rvw.reviewed_at, rvw.rating, rvw.comment, rvw.last_decision_at, rvw.last_decision_by, rvw.last_decision_approved, -- noqa
     usr.id, usr.created, usr.updated, usr.display_name -- noqa
 FROM socialmaps.review AS rvw
 INNER JOIN socialmaps."user" AS usr ON rvw.user_id = usr.id
@@ -422,11 +330,8 @@ func (q *Queries) ListLatestApprovedReviewsOfPlaceReverse(ctx context.Context, p
 			&i.Review.PlaceID,
 			&i.Review.UserID,
 			&i.Review.ReviewedAt,
-			&i.Review.Liked,
+			&i.Review.Rating,
 			&i.Review.Comment,
-			&i.Review.NLikes,
-			&i.Review.DecNLikes,
-			&i.Review.DecUpdatedAt,
 			&i.Review.LastDecisionAt,
 			&i.Review.LastDecisionBy,
 			&i.Review.LastDecisionApproved,
@@ -472,9 +377,9 @@ func (q *Queries) LoadLatestDecisionOfReview(ctx context.Context, reviewID int64
 const loadPlace = `-- name: LoadPlace :one
 SELECT
     elm.osm_type, elm.osm_id, elm.location, elm.tags, elm.lon, elm.lat, elm.name,  -- noqa
-    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
+    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_reviews, plc.avg_rating  -- noqa
 FROM
-    socialmaps.place AS plc
+    socialmaps.computed_place AS plc
 INNER JOIN osm2pgsql.element AS elm
     ON (
         ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
@@ -485,8 +390,8 @@ WHERE
 `
 
 type LoadPlaceRow struct {
-	Element Element
-	Place   Place
+	Element       Element
+	ComputedPlace ComputedPlace
 }
 
 func (q *Queries) LoadPlace(ctx context.Context, id int64) (LoadPlaceRow, error) {
@@ -500,27 +405,23 @@ func (q *Queries) LoadPlace(ctx context.Context, id int64) (LoadPlaceRow, error)
 		&i.Element.Lon,
 		&i.Element.Lat,
 		&i.Element.Name,
-		&i.Place.ID,
-		&i.Place.Created,
-		&i.Place.Updated,
-		&i.Place.Name,
-		&i.Place.Location,
-		&i.Place.Lat,
-		&i.Place.Lon,
-		&i.Place.OsmType,
-		&i.Place.OsmID,
-		&i.Place.NLikes,
-		&i.Place.NDislikes,
-		&i.Place.DecNLikes,
-		&i.Place.DecNDislikes,
-		&i.Place.DecUpdatedAt,
-		&i.Place.Score,
+		&i.ComputedPlace.ID,
+		&i.ComputedPlace.Created,
+		&i.ComputedPlace.Updated,
+		&i.ComputedPlace.Name,
+		&i.ComputedPlace.Location,
+		&i.ComputedPlace.Lat,
+		&i.ComputedPlace.Lon,
+		&i.ComputedPlace.OsmType,
+		&i.ComputedPlace.OsmID,
+		&i.ComputedPlace.NReviews,
+		&i.ComputedPlace.AvgRating,
 	)
 	return i, err
 }
 
 const loadReview = `-- name: LoadReview :one
-SELECT id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+SELECT id, created, updated, place_id, user_id, reviewed_at, rating, comment, last_decision_at, last_decision_by, last_decision_approved
 FROM socialmaps.review
 WHERE
     id = $1
@@ -536,11 +437,8 @@ func (q *Queries) LoadReview(ctx context.Context, id int64) (Review, error) {
 		&i.PlaceID,
 		&i.UserID,
 		&i.ReviewedAt,
-		&i.Liked,
+		&i.Rating,
 		&i.Comment,
-		&i.NLikes,
-		&i.DecNLikes,
-		&i.DecUpdatedAt,
 		&i.LastDecisionAt,
 		&i.LastDecisionBy,
 		&i.LastDecisionApproved,
@@ -552,7 +450,7 @@ const lookupPlace = `-- name: LookupPlace :one
 
 SELECT
     elm.osm_type, elm.osm_id, elm.location, elm.tags, elm.lon, elm.lat, elm.name,  -- noqa
-    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
+    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_reviews, plc.avg_rating  -- noqa
 FROM
     osm2pgsql.element AS elm
 CROSS JOIN
@@ -561,7 +459,7 @@ CROSS JOIN
         FROM JSONB_EACH_TEXT(elm.tags) AS tag ("key", "value")
         WHERE tag."key" IN ('name', 'int_name') OR tag."key" LIKE 'name:%'
     ) AS sim
-LEFT OUTER JOIN socialmaps.place_view AS plc
+LEFT OUTER JOIN socialmaps.optional_computed_place AS plc
     ON (
         ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
         AND elm."name" = plc."name"
@@ -589,8 +487,8 @@ LIMIT -- noqa: AM09
 `
 
 type LookupPlaceRow struct {
-	Element       Element
-	OptionalPlace OptionalPlace
+	Element               Element
+	OptionalComputedPlace OptionalComputedPlace
 }
 
 // TODO: we'll add order by later
@@ -611,21 +509,17 @@ func (q *Queries) LookupPlace(ctx context.Context, name string, lonMin float64, 
 		&i.Element.Lon,
 		&i.Element.Lat,
 		&i.Element.Name,
-		&i.OptionalPlace.ID,
-		&i.OptionalPlace.Created,
-		&i.OptionalPlace.Updated,
-		&i.OptionalPlace.Name,
-		&i.OptionalPlace.Location,
-		&i.OptionalPlace.Lat,
-		&i.OptionalPlace.Lon,
-		&i.OptionalPlace.OsmType,
-		&i.OptionalPlace.OsmID,
-		&i.OptionalPlace.NLikes,
-		&i.OptionalPlace.NDislikes,
-		&i.OptionalPlace.DecNLikes,
-		&i.OptionalPlace.DecNDislikes,
-		&i.OptionalPlace.DecUpdatedAt,
-		&i.OptionalPlace.Score,
+		&i.OptionalComputedPlace.ID,
+		&i.OptionalComputedPlace.Created,
+		&i.OptionalComputedPlace.Updated,
+		&i.OptionalComputedPlace.Name,
+		&i.OptionalComputedPlace.Location,
+		&i.OptionalComputedPlace.Lat,
+		&i.OptionalComputedPlace.Lon,
+		&i.OptionalComputedPlace.OsmType,
+		&i.OptionalComputedPlace.OsmID,
+		&i.OptionalComputedPlace.NReviews,
+		&i.OptionalComputedPlace.AvgRating,
 	)
 	return i, err
 }
@@ -633,10 +527,10 @@ func (q *Queries) LookupPlace(ctx context.Context, name string, lonMin float64, 
 const queryPlaces = `-- name: QueryPlaces :many
 SELECT DISTINCT ON (elm."name") -- TODO: buggy. we want to allow same named POIs if they are apart enough
     elm.osm_type, elm.osm_id, elm.location, elm.tags, elm.lon, elm.lat, elm.name,  -- noqa
-    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_likes, plc.n_dislikes, plc.dec_n_likes, plc.dec_n_dislikes, plc.dec_updated_at, plc.score  -- noqa
+    plc.id, plc.created, plc.updated, plc.name, plc.location, plc.lat, plc.lon, plc.osm_type, plc.osm_id, plc.n_reviews, plc.avg_rating  -- noqa
 FROM
     osm2pgsql.element AS elm
-LEFT OUTER JOIN socialmaps.place_view AS plc
+LEFT OUTER JOIN socialmaps.optional_computed_place AS plc
     ON (
         ST_DWITHIN(plc."location"::geography, elm."location"::geography, 10)
         AND elm."name" = plc."name"
@@ -662,8 +556,8 @@ LIMIT -- noqa: AM09
 `
 
 type QueryPlacesRow struct {
-	Element       Element
-	OptionalPlace OptionalPlace
+	Element               Element
+	OptionalComputedPlace OptionalComputedPlace
 }
 
 func (q *Queries) QueryPlaces(ctx context.Context, lonMin float64, latMin float64, lonMax float64, latMax float64, predicate interface{}) ([]QueryPlacesRow, error) {
@@ -689,21 +583,17 @@ func (q *Queries) QueryPlaces(ctx context.Context, lonMin float64, latMin float6
 			&i.Element.Lon,
 			&i.Element.Lat,
 			&i.Element.Name,
-			&i.OptionalPlace.ID,
-			&i.OptionalPlace.Created,
-			&i.OptionalPlace.Updated,
-			&i.OptionalPlace.Name,
-			&i.OptionalPlace.Location,
-			&i.OptionalPlace.Lat,
-			&i.OptionalPlace.Lon,
-			&i.OptionalPlace.OsmType,
-			&i.OptionalPlace.OsmID,
-			&i.OptionalPlace.NLikes,
-			&i.OptionalPlace.NDislikes,
-			&i.OptionalPlace.DecNLikes,
-			&i.OptionalPlace.DecNDislikes,
-			&i.OptionalPlace.DecUpdatedAt,
-			&i.OptionalPlace.Score,
+			&i.OptionalComputedPlace.ID,
+			&i.OptionalComputedPlace.Created,
+			&i.OptionalComputedPlace.Updated,
+			&i.OptionalComputedPlace.Name,
+			&i.OptionalComputedPlace.Location,
+			&i.OptionalComputedPlace.Lat,
+			&i.OptionalComputedPlace.Lon,
+			&i.OptionalComputedPlace.OsmType,
+			&i.OptionalComputedPlace.OsmID,
+			&i.OptionalComputedPlace.NReviews,
+			&i.OptionalComputedPlace.AvgRating,
 		); err != nil {
 			return nil, err
 		}
@@ -715,31 +605,19 @@ func (q *Queries) QueryPlaces(ctx context.Context, lonMin float64, latMin float6
 	return items, nil
 }
 
-const unlikeReview = `-- name: UnlikeReview :exec
-DELETE FROM socialmaps.review_like
-WHERE
-    review_id = $1
-    AND user_id = $2
-`
-
-func (q *Queries) UnlikeReview(ctx context.Context, reviewID int64, userID int64) error {
-	_, err := q.db.Exec(ctx, unlikeReview, reviewID, userID)
-	return err
-}
-
 const updateReview = `-- name: UpdateReview :one
 UPDATE socialmaps.review SET
-    liked = $1,
+    rating = $1,
     "comment" = $2,
     updated = $4
 WHERE
     id = $3
-RETURNING id, created, updated, place_id, user_id, reviewed_at, liked, comment, n_likes, dec_n_likes, dec_updated_at, last_decision_at, last_decision_by, last_decision_approved
+RETURNING id, created, updated, place_id, user_id, reviewed_at, rating, comment, last_decision_at, last_decision_by, last_decision_approved
 `
 
-func (q *Queries) UpdateReview(ctx context.Context, liked bool, comment *string, iD int64, asOf time.Time) (Review, error) {
+func (q *Queries) UpdateReview(ctx context.Context, rating int32, comment *string, iD int64, asOf time.Time) (Review, error) {
 	row := q.db.QueryRow(ctx, updateReview,
-		liked,
+		rating,
 		comment,
 		iD,
 		asOf,
@@ -752,11 +630,8 @@ func (q *Queries) UpdateReview(ctx context.Context, liked bool, comment *string,
 		&i.PlaceID,
 		&i.UserID,
 		&i.ReviewedAt,
-		&i.Liked,
+		&i.Rating,
 		&i.Comment,
-		&i.NLikes,
-		&i.DecNLikes,
-		&i.DecUpdatedAt,
 		&i.LastDecisionAt,
 		&i.LastDecisionBy,
 		&i.LastDecisionApproved,

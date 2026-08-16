@@ -19,8 +19,8 @@ type UpdateReview struct {
 }
 
 type updateReviewBodyArg struct {
-	Liked   bool   `json:"liked" doc:"Whether the user liked this **Place** or not." example:"true"`
-	Comment string `json:"comment" doc:"The comment written by the user about this **Place**, if written. Otherwise can be an empty string." example:"It's one of the Seven Wonders of the Ancient World!"`
+	Rating  int    `json:"rating" doc:"The star rating the **User** gives to the **Place**." example:"5" minimum:"1" maximum:"5"`
+	Comment string `json:"comment" doc:"The comment written by the user about this **Place**, if written. Otherwise can be an empty string." example:"It’s one of the Seven Wonders of the Ancient World!"`
 }
 
 type updateReviewArgs struct {
@@ -72,7 +72,7 @@ func (m *UpdateReview) Execute(ctx context.Context, args *updateReviewArgs) (*Dy
 		comment = nil
 	}
 
-	rvwM, err = m.QS.UpdateReview(ctx, args.Body.Liked, comment, rvwM.ID, now)
+	rvwM, err = m.QS.UpdateReview(ctx, int32(args.Body.Rating), comment, rvwM.ID, now)
 	if err != nil {
 		return nil, err
 	}

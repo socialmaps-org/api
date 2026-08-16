@@ -47,7 +47,7 @@ func TestLookupNew(t *testing.T) {
 	require.Equal(t, 7.4192941, j.Get[float64](plcR, "location", "lon"))
 
 	tuple := must.Get(qs.LoadPlace(ctx, j.Get[int64](plcR, "id")))
-	plcM := tuple.Place
+	plcM := tuple.ComputedPlace
 	require.NotNil(t, plcM)
 	require.Equal(t, "Woo", plcM.Name)
 	require.Equal(t, 43.7330475, plcM.Lat)

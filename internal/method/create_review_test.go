@@ -3,6 +3,7 @@ package method
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -28,7 +29,7 @@ func TestCreateReviewAuthorizationMissing(t *testing.T) {
 	// Act
 	req, err := http.NewRequest(
 		"POST", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID),
-		strings.NewReader(`{"liked": true, "comments": "I liked it!"}`),
+		strings.NewReader(`{"rating": 4, "comments": "I liked it!"}`),
 	)
 	require.NoError(t, err)
 
@@ -51,7 +52,7 @@ func TestCreateReviewMissingPlace(t *testing.T) {
 	// Act
 	req, err := http.NewRequest(
 		"POST", srv.URL+"/v1/places/42/reviews",
-		strings.NewReader(`{"liked": true, "comment": "I liked it!"}`),
+		strings.NewReader(`{"rating": 4, "comment": "I liked it!"}`),
 	)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer my-auth-token")
@@ -79,7 +80,7 @@ func TestCreateReview(t *testing.T) {
 	// Act
 	req, err := http.NewRequest(
 		"POST", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID),
-		strings.NewReader(`{"liked": true, "comment": "I liked it!"}`),
+		strings.NewReader(`{"rating": 4, "comment": "I liked it!"}`),
 	)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer my-auth-token")
@@ -88,21 +89,24 @@ func TestCreateReview(t *testing.T) {
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 
+	resB, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+
 	// Assert
 	require.Equal(t, 1, authr.nIntrospectCalls)
 
-	require.Equal(t, http.StatusAccepted, res.StatusCode)
+	require.Equal(t, http.StatusAccepted, res.StatusCode, string(resB))
 
 	var rvwR any
-	err = json.NewDecoder(res.Body).Decode(&rvwR)
+	err = json.Unmarshal(resB, &rvwR)
 	require.NoError(t, err)
 	require.Equal(t, plc.ID, j.Get[int64](rvwR, "place", "id"))
-	require.True(t, j.Get[bool](rvwR, "liked"))
+	require.Equal(t, 4, j.Get[int](rvwR, "rating"))
 	require.Equal(t, "I liked it!", j.Get[string](rvwR, "comment"))
 
 	rvwM := must.Get(qs.LoadReview(ctx, j.Get[int64](rvwR, "id")))
 	require.NotNil(t, rvwM)
-	require.True(t, rvwM.Liked)
+	require.Equal(t, int32(4), rvwM.Rating)
 	require.Equal(t, "I liked it!", *rvwM.Comment)
 }
 
@@ -119,7 +123,7 @@ func TestCreateReviewInFuture(t *testing.T) {
 	// Act
 	req, err := http.NewRequest(
 		"POST", fmt.Sprintf("%s/v1/places/%d/reviews", srv.URL, plc.ID),
-		strings.NewReader(`{"liked": true, "comment": "I liked it!", "reviewed_at": 2524608000}`),
+		strings.NewReader(`{"rating": 4, "comment": "I liked it!", "reviewed_at": 2524608000}`),
 	)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer my-auth-token")
