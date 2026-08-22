@@ -136,7 +136,7 @@ func TestLookupSimilar(t *testing.T) {
 	var plcR any
 	err = json.NewDecoder(res.Body).Decode(&plcR)
 	require.NoError(t, err)
-	require.Equal(t, "Princess Grace Rose Garden Fountain", j.Get[string](plcR, "osm_tags", "name:en"))
+	require.Equal(t, "Princess Grace Rose Garden Fountain", j.Get[string](plcR, "osm", "tags", "name:en"))
 }
 
 func TestLookupAllNames(t *testing.T) {
@@ -165,5 +165,5 @@ func TestLookupAllNames(t *testing.T) {
 	err = json.NewDecoder(res.Body).Decode(&plcR)
 	require.NoError(t, err)
 	require.Equal(t, "Cathédrale Notre-Dame-Immaculée", j.Get[string](plcR, "name"))
-	require.Equal(t, "聖母無染原罪主教座堂", j.Get[string](plcR, "osm_tags", "name:zh"))
+	require.Equal(t, "聖母無染原罪主教座堂", j.Get[string](plcR, "osm", "tags", "name:zh"))
 }

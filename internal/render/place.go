@@ -20,8 +20,10 @@ func Place(m model.ComputedPlace, e model.Element) resource.Place {
 				Average: m.AvgRating,
 			},
 		},
-		OSMType: e.OsmType,
-		OSMID:   e.OsmID,
-		OSMTags: e.Tags,
+		OSM: resource.OSM{
+			Type: e.OsmType,
+			ID:   e.OsmID,
+			Tags: e.Tags,
+		},
 	}
 }
