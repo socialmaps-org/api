@@ -38,15 +38,25 @@ func (ReviewSummary) Schema(r huma.Registry) *huma.Schema {
 	return huma.SchemaFromType(r, reflect.TypeOf(raw{}))
 }
 
+type OSM struct {
+	Type string            `json:"type" doc:"OpenStreetMap [type](https://wiki.openstreetmap.org/wiki/Elements) of this **Place**." example:"W"`
+	ID   int64             `json:"id" doc:"OpenStreetMap [ID](https://wiki.openstreetmap.org/wiki/Elements#id) of this **Place**." example:"739181962"`
+	Tags map[string]string `json:"tags" doc:"OpenStreetMap [tags](https://wiki.openstreetmap.org/wiki/Tags) of this **Place**." example:"{\"tourism\": \"attraction\", \"historic\": \"yes\", \"name\": \"Halikarnas Mozolesi\", \"name:en\": \"Mausoleum at Halicarnassus\", \"opening_hours\": \"Tu-Su 08:30-17:00\"}"`
+}
+
+// Inline OSM instead of using refs to avoid listing it under Schemas.
+func (OSM) Schema(r huma.Registry) *huma.Schema {
+	type raw OSM
+	return huma.SchemaFromType(r, reflect.TypeOf(raw{}))
+}
+
 type Place struct {
-	Object        string            `json:"object,omitempty" enum:"place"`
-	ID            int64             `json:"id" minimum:"1" doc:"Unique identifier for this **Place**." example:"1"`
-	Name          string            `json:"name,omitempty" maxLength:"256" doc:"The common, default name in the local language of this **Place**." example:"Halikarnas Mozolesi"`
-	Location      Location          `json:"location" doc:"The geolocation of this **Place** (or its centre if it's a way/relation) based on [WGS 84](https://en.wikipedia.org/wiki/WGS-84)."`
-	ReviewSummary ReviewSummary     `json:"review_summary" doc:"Summary of the **Reviews** of this **Place**."`
-	OSMType       string            `json:"osm_type" doc:"OpenStreetMap [type](https://wiki.openstreetmap.org/wiki/Elements) of this **Place**." example:"W"`
-	OSMID         int64             `json:"osm_id" doc:"OpenStreetMap [ID](https://wiki.openstreetmap.org/wiki/Elements#id) of this **Place**." example:"739181962"`
-	OSMTags       map[string]string `json:"osm_tags" doc:"OpenStreetMap [tags](https://wiki.openstreetmap.org/wiki/Tags) of this **Place**." example:"{\"tourism\": \"attraction\", \"historic\": \"yes\", \"name\": \"Halikarnas Mozolesi\", \"name:en\": \"Mausoleum at Halicarnassus\", \"opening_hours\": \"Tu-Su 08:30-17:00\"}"`
+	Object        string        `json:"object,omitempty" enum:"place"`
+	ID            int64         `json:"id" minimum:"1" doc:"Unique identifier for this **Place**." example:"1"`
+	Name          string        `json:"name,omitempty" maxLength:"256" doc:"The common, default name in the local language of this **Place**." example:"Halikarnas Mozolesi"`
+	Location      Location      `json:"location" doc:"The geolocation of this **Place** (or its centre if it's a way/relation) based on [WGS 84](https://en.wikipedia.org/wiki/WGS-84)."`
+	ReviewSummary ReviewSummary `json:"review_summary" doc:"Summary of the **Reviews** of this **Place**."`
+	OSM           OSM           `json:"osm" doc:"OpenStreetMap metadata of this **Place**."`
 }
 
 type PlaceStub struct {
