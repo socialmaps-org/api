@@ -6,7 +6,7 @@ max_line_length = 120
 
 # We exclude `ambiguous.column_count` because we're using sqlc and `SELECT *` is
 # not ambiguous to sqlc because it knows the database schema.
-exclude_rules = ambiguous.column_count
+exclude_rules = ambiguous.column_count,postgres.excessive_locks
 
 [sqlfluff:rules:references.quoting]
 # Require every keyword used as an identifier to be quoted.
