@@ -4,7 +4,7 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
-CREATE SCHEMA socialmaps AUTHORIZATION socialmaps_api;
+CREATE SCHEMA IF NOT EXISTS socialmaps AUTHORIZATION socialmaps_api;
 
 CREATE FUNCTION socialmaps.enforce_immutability()
 RETURNS TRIGGER
@@ -45,7 +45,7 @@ CREATE TABLE socialmaps.place (
     CONSTRAINT osm_id CHECK (osm_id >= 0)
 );
 
-CREATE INDEX CONCURRENTLY place_location ON socialmaps.place USING gist ("location");
+CREATE INDEX place_location ON socialmaps.place USING gist ("location");
 
 CREATE TRIGGER on_update_of_immutables_on_place
 BEFORE UPDATE OF created ON socialmaps.place
@@ -78,7 +78,7 @@ CREATE TABLE socialmaps.review (
     )
 );
 
-CREATE INDEX CONCURRENTLY review_latest_by_place
+CREATE INDEX review_latest_by_place
 ON socialmaps.review (
     place_id,
     last_decision_approved,
